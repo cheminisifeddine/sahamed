@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Local data / secrets / runtime
+*.db
+*.db-journal
+*.log
+sessions.json
+cloud-backup.json
+Licence/
+activation.dat
+network-mode.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Recovery artifacts (not part of the product)
+dist_BEAUTIFIED/
+electron_PRETTY/
+app.asar.unpacked/
+README_RECOVERY.md
+RUN_AND_RECOVER.md
+
+# Env
+.env
+.env.*

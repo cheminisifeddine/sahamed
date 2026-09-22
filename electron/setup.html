@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>Configuration SahaMed</title>
+<style>
+  :root { --primary: #0F4C81; --primary-light: #1A6DB5; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; height: 100vh; display: flex; align-items: center; justify-content: center;
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
+    background: radial-gradient(circle at top left, rgba(0,180,166,0.12), transparent 34rem),
+                linear-gradient(180deg, #f8fafc 0%, #eef4f8 100%);
+    color: #0F172A;
+  }
+  .wrap { width: 720px; max-width: 92vw; }
+  h1 { font-size: 22px; font-weight: 800; margin: 0 0 4px; color: #1E293B; }
+  p.sub { color: #64748B; font-size: 14px; margin: 0 0 28px; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .card {
+    border: 1.5px solid #E2E8F0; border-radius: 16px; background: #fff; padding: 22px;
+    box-shadow: 0 2px 8px rgba(15,23,42,0.06); cursor: pointer; transition: all .15s ease;
+  }
+  .card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 12px 24px rgba(15,23,42,0.10); }
+  .card.active { border-color: var(--primary); background: #EFF6FF; }
+  .icon { font-size: 28px; margin-bottom: 10px; }
+  .card h2 { font-size: 15px; margin: 0 0 6px; color: #1E293B; }
+  .card p { font-size: 12.5px; color: #64748B; margin: 0; line-height: 1.5; }
+  .panel { margin-top: 18px; border-radius: 16px; border: 1.5px solid #E2E8F0; background: #fff; padding: 20px; display: none; }
+  .panel.show { display: block; }
+  .label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569; }
+  input[type=text] {
+    width: 100%; margin-top: 6px; padding: 10px 12px; border-radius: 10px; border: 1.5px solid #CBD5E1;
+    font-size: 14px; outline: none;
+  }
+  input[type=text]:focus { border-color: var(--primary); }
+  .row { display: flex; gap: 10px; align-items: flex-end; margin-top: 14px; }
+  .row > div { flex: 1; }
+  button {
+    border: none; border-radius: 10px; padding: 10px 16px; font-size: 13.5px; font-weight: 700;
+    cursor: pointer; transition: all .15s ease;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-light); }
+  .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-ghost { background: #F1F5F9; color: #334155; }
+  .status { margin-top: 12px; font-size: 13px; font-weight: 600; min-height: 18px; }
+  .status.ok { color: #16A34A; }
+  .status.err { color: #DC2626; }
+  .hint { margin-top: 14px; font-size: 12px; color: #94A3B8; }
+  .ip-badge { display: inline-block; font-family: monospace; font-weight: 700; background: #E6F7F6; color: var(--primary); padding: 2px 8px; border-radius: 6px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Configuration du poste</h1>
+    <p class="sub">À faire une seule fois. Choisissez le rôle de cet ordinateur.</p>
+
+    <div class="cards">
+      <div class="card" id="card-main">
+        <div class="icon">🖥️</div>
+        <h2>Poste principal (Médecin)</h2>
+        <p>Les données (patients, consultations, ordonnances...) sont stockées sur cet ordinateur. Les postes secrétaires s'y connectent.</p>
+      </div>
+      <div class="card" id="card-secretary">
+        <div class="icon">👥</div>
+        <h2>Poste secrétaire (réseau)</h2>
+        <p>Cet ordinateur se connecte aux données d'un poste principal SahaMed déjà installé sur le réseau.</p>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-main">
+      <div class="label">Adresse IP de ce poste</div>
+      <p style="margin-top:6px">Notez cette adresse : <span class="ip-badge" id="main-ip">...</span> — elle servira à configurer les postes secrétaires.</p>
+      <button class="btn-primary" id="btn-confirm-main" style="margin-top:10px">Continuer</button>
+    </div>
+
+    <div class="panel" id="panel-secretary">
+      <div class="row">
+        <div>
+          <div class="label">Adresse IP du poste principal</div>
+          <input type="text" id="ip-input" placeholder="ex : 192.168.1.20" autofocus />
+        </div>
+        <button class="btn-ghost" id="btn-test">Tester</button>
+        <button class="btn-primary" id="btn-confirm-secretary" disabled>Se connecter</button>
+      </div>
+      <div class="status" id="status"></div>
+      <div class="hint">L'adresse IP est visible sur le poste médecin dans Paramètres → Réseau. Les deux postes doivent être sur le même réseau (câble ou Wi-Fi).</div>
+    </div>
+  </div>
+
+<script>
+  const cardMain = document.getElementById('card-main');
+  const cardSec = document.getElementById('card-secretary');
+  const panelMain = document.getElementById('panel-main');
+  const panelSec = document.getElementById('panel-secretary');
+  const ipInput = document.getElementById('ip-input');
+  const btnTest = document.getElementById('btn-test');
+  const btnConfirmSec = document.getElementById('btn-confirm-secretary');
+  const btnConfirmMain = document.getElementById('btn-confirm-main');
+  const status = document.getElementById('status');
+
+  function select(which) {
+    cardMain.classList.toggle('active', which === 'main');
+    cardSec.classList.toggle('active', which === 'secretary');
+    panelMain.classList.toggle('show', which === 'main');
+    panelSec.classList.toggle('show', which === 'secretary');
+  }
+
+  cardMain.addEventListener('click', () => {
+    select('main');
+    window.setupApi.getLocalIP().then((ip) => { document.getElementById('main-ip').textContent = ip; });
+  });
+  cardSec.addEventListener('click', () => { select('secretary'); ipInput.focus(); });
+
+  btnConfirmMain.addEventListener('click', () => {
+    btnConfirmMain.disabled = true;
+    btnConfirmMain.textContent = 'Démarrage...';
+    window.setupApi.chooseMain();
+  });
+
+  btnTest.addEventListener('click', async () => {
+    const ip = ipInput.value.trim();
+    if (!ip) return;
+    status.className = 'status';
+    status.textContent = 'Test en cours...';
+    btnTest.disabled = true;
+    btnConfirmSec.disabled = true;
+    try {
+      const result = await window.setupApi.testConnection(ip);
+      if (result.ok) {
+        status.className = 'status ok';
+        status.textContent = '✓ Poste principal SahaMed trouvé — connexion prête.';
+        btnConfirmSec.disabled = false;
+      } else {
+        status.className = 'status err';
+        status.textContent = '✗ ' + (result.error || 'Aucune réponse à cette adresse.');
+      }
+    } catch (e) {
+      status.className = 'status err';
+      status.textContent = '✗ Erreur de connexion.';
+    } finally {
+      btnTest.disabled = false;
+    }
+  });
+
+  ipInput.addEventListener('input', () => { btnConfirmSec.disabled = true; status.textContent = ''; });
+  ipInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') btnTest.click(); });
+
+  btnConfirmSec.addEventListener('click', () => {
+    const ip = ipInput.value.trim();
+    if (!ip) return;
+    btnConfirmSec.disabled = true;
+    btnConfirmSec.textContent = 'Connexion...';
+    window.setupApi.chooseSecretary(ip);
+  });
+</script>
+</body>
+</html>

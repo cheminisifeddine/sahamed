@@ -1,0 +1,51 @@
+{
+  "name": "sahamed",
+  "version": "1.0.0",
+  "description": "SahaMed — logiciel 100% hors-ligne de gestion de cabinet medical (Algerie)",
+  "main": "electron/main.cjs",
+  "dependencies": {
+    "@fontsource/atkinson-hyperlegible": "^5.3.0",
+    "@fontsource/cairo": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
+    "@fontsource/roboto-condensed": "^5.3.0",
+    "@fullcalendar/daygrid": "^6.1.11",
+    "@fullcalendar/interaction": "^6.1.11",
+    "@fullcalendar/react": "^6.1.11",
+    "@fullcalendar/timegrid": "^6.1.11",
+    "bcryptjs": "^2.4.3",
+    "clsx": "^2.1.0",
+    "html2canvas": "^1.4.1",
+    "jsbarcode": "^3.12.3",
+    "jspdf": "^2.5.1",
+    "lucide-react": "^0.468.0",
+    "pdf-to-printer": "^5.8.1",
+    "qrcode": "^1.5.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-hot-toast": "^2.4.1",
+    "recharts": "^2.15.4",
+    "socket.io": "^4.7.4",
+    "socket.io-client": "^4.7.4",
+    "sql.js": "^1.13.0",
+    "tailwind-merge": "^2.2.1",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11"
+  },
+  "allowScripts": {
+    "electron@33.4.11": true
+  },
+  "scripts": {
+    "start": "electron .",
+    "reset-admin": "node tools/reset-admin.js",
+    "export-clients": "node tools/export-clients.js",
+    "find-db": "node tools/find-db.js",
+    "make-token": "node tools/make-token.js",
+    "backup:cloud": "node tools/cloud-backup.js"
+  },
+  "productName": "SahaMed",
+  "author": "SahaMed",
+  "license": "UNLICENSED"
+}
