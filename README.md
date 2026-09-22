@@ -48,9 +48,8 @@ Fichiers importants : `sahamed.db`, `network-mode.json`, `cloud-backup.json` (op
 Si vous n'avez **pas** de config, l'app reste purement locale — rien n'est envoyé.
 
 1. Créer un [Cloudflare API Token](https://dash.cloudflare.com/profile/api-tokens) : permissions **Account → D1 → Edit**, **Workers R2 → Edit**.
-2. Créer une base **D1** et un bucket **R2**.
-3. Créer les clés d'accès **R2** (S3-compatible).
-4. Écrire `<userData>/cloud-backup.json` :
+2. Créer un bucket **R2** (ex. `sahamed-backups`). Une base **D1** si vous voulez aussi l’historique SQL (optionnel — R2 seul suffit pour un restore binaire).
+3. Écrire `<userData>/cloud-backup.json` :
 
 ```json
 {
@@ -59,15 +58,14 @@ Si vous n'avez **pas** de config, l'app reste purement locale — rien n'est env
   "accountId": "VOTRE_ACCOUNT_ID",
   "apiToken": "VOTRE_API_TOKEN",
   "d1DatabaseId": "VOTRE_D1_DATABASE_ID",
-  "r2Bucket": "sahamed-backups",
-  "r2Endpoint": "https://VOTRE_ACCOUNT_ID.r2.cloudflarestorage.com",
-  "r2AccessKeyId": "VOTRE_R2_ACCESS_KEY_ID",
-  "r2SecretAccessKey": "VOTRE_R2_SECRET_ACCESS_KEY"
+  "r2Bucket": "sahamed-backups"
 }
 ```
 
-- **R2** : copie binaire complète de `sahamed.db` (restore one-shot).
-- **D1** : historique `backup_runs` + export JSON des tables critiques.
+- **R2** : copie binaire complète de `sahamed.db` via l’API Cloudflare (pas de clés S3).
+- **D1** : historique `backup_runs` + export JSON des tables critiques (si `d1DatabaseId` renseigné).
+
+> **Limite D1** : le plan gratuit accepte 10 bases par compte. Si ce quota est atteint, laissez `d1DatabaseId` vide — la sauvegarde R2 reste active.
 
 Déclenchement manuel :
 
