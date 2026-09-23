@@ -1,0 +1,26 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sauvegarde chiffrée — SahaMed DZ</title><link rel="stylesheet" href="/dz/dz.css"></head><body>
+<header class="top"><a href="/dz/">← Modules</a><h1>🔐 Sauvegarde chiffrée (délestages)</h1><span id="lic"></span></header>
+<main>
+  <div class="panel"><h2>Snapshot chiffré immédiat (AES-256-GCM → disque + clé USB si branchée)</h2>
+    <label>Phrase secrète (≥ 8 caractères — gardez-la hors du PC)</label>
+    <input id="pp" type="password" placeholder="••••••••">
+    <button id="b-go">💾 Sauvegarder maintenant</button><div id="out"></div>
+  </div>
+  <div class="panel"><h2>Stratégie automatique</h2>
+    <p>🌐 <b>R2 Cloudflare</b> : snapshot chiffré toutes les 60 min (secours chiffré, jamais de données en clair).<br>
+    💽 <b>USB</b> : dès qu'une clé est branchée, copie redondante (rotation 30 jours).<br>
+    ⚡ <b>WAL + fsync</b> : chaque écriture est synchronisée disque avant réponse.</p>
+  </div>
+</main>
+<script src="/dz/dz.js"></script>
+<script>(async function () {
+  DZ.licenseChip(document.getElementById('lic'));
+  document.getElementById('b-go').onclick = async () => {
+    try {
+      const r = await DZ.rpc('dz:backup.chiffre', [{ passphrase: document.getElementById('pp').value }]);
+      document.getElementById('out').innerHTML = `<p>✅ <b>${DZ.esc(r.fichier)}</b> (${Math.round(r.taille_octets / 1024)} Ko) →</p><pre>${DZ.esc(r.cibles.join('\n'))}</pre>`;
+      document.getElementById('pp').value = '';
+    } catch(e) { DZ.toast(e.message, false); }
+  };
+})();</script></body></html>

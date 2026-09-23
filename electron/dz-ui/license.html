@@ -1,0 +1,38 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Licence — SahaMed DZ</title><link rel="stylesheet" href="/dz/dz.css"></head><body>
+<header class="top"><a href="/dz/">← Modules</a><h1>🔑 Licence perpétuelle hors-ligne</h1><span id="lic"></span></header>
+<main>
+  <div class="panel"><h2>1. Transmettez ce code (SMS / WhatsApp au commercial)</h2>
+    <p style="font-size:26px;letter-spacing:2px"><b id="machine">…</b></p>
+    <h2>2. Saisissez la clé d'activation reçue</h2>
+    <input id="key" placeholder="XXXX-XXXX-XXXX-XXXX-…" style="font-size:17px">
+    <button id="b-bind">✅ Activer définitivement</button><div id="out"></div>
+  </div>
+  <div class="panel"><h2>Statut</h2><div id="status">…</div>
+    <p style="font-size:13px;color:#94a3b8">Licence perpétuelle, sans abonnement, sans internet. Liée à ce poste uniquement.</p>
+  </div>
+</main>
+<script src="/dz/dz.js"></script>
+<script>(async function () {
+  async function pub(m, a) {
+    const r = await fetch('/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: m, args: a }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error);
+    return j.data;
+  }
+  async function refresh() {
+    try {
+      const s = await pub('guard:status', []);
+      document.getElementById('machine').textContent = s.machine || '—';
+      document.getElementById('status').innerHTML = s.mode === 'bound'
+        ? `<span class="badge green">✅ LICENCIÉ PERPÉTUEL</span> ${s.licensedAt ? 'depuis ' + s.licensedAt.slice(0, 10) : ''}`
+        : `<span class="badge amber">🧪 ESSAI — ${s.daysLeft} jour(s) restant(s)</span>`;
+      DZ.licenseChip(document.getElementById('lic'));
+    } catch(e) { document.getElementById('status').textContent = e.message; }
+  }
+  document.getElementById('b-bind').onclick = async () => {
+    try { await pub('guard:bind', [document.getElementById('key').value]); DZ.toast('Logiciel activé ✔'); refresh(); }
+    catch(e) { DZ.toast(e.message, false); }
+  };
+  refresh();
+})();</script></body></html>

@@ -3,6 +3,7 @@ const initSqlJs = require('sql.js');
 const bcrypt = require('bcryptjs');
 const fs = require('node:fs');
 const path = require('node:path');
+const dz = require('./dz.cjs');
 
 const required = (value, field) => {
   if (value === undefined || value === null || String(value).trim() === '') throw new Error(`${field} est obligatoire`);
@@ -22,6 +23,11 @@ async function initDatabase(userDataPath) {
   const dbBrute = fs.existsSync(dbPath) ? new SQL.Database(fs.readFileSync(dbPath)) : new SQL.Database();
   const db = reparerReferencesUtilisateurs(SQL, dbBrute, dbPath);
   const store = createStore(db, dbPath);
+  // Résilience coupures (délestages) : WAL + NORMAL + timeout + FK.
+  // (sql.js rejoue ces PRAGMA à chaque ouverture ; le snapshot disque reste cohérent.)
+  try { store.exec('PRAGMA journal_mode = WAL'); } catch {}
+  try { store.exec('PRAGMA synchronous = NORMAL'); } catch {}
+  try { store.exec('PRAGMA busy_timeout = 5000'); } catch {}
   store.exec('PRAGMA foreign_keys = ON');
   migrate(store);
   seed(store);
@@ -91,7 +97,16 @@ function createStore(db, dbPath) {
       return this.all(sql, params)[0] || null;
     },
     save() {
-      fs.writeFileSync(dbPath, Buffer.from(db.export()));
+      // Durabilité coupures : write + fsync avant de rendre la main.
+      // Sans fsync, un délestage pendant le flush OS = base tronquée au reboot.
+      const data = Buffer.from(db.export());
+      const fd = fs.openSync(dbPath, 'w');
+      try {
+        fs.writeSync(fd, data);
+        fs.fsyncSync(fd);
+      } finally {
+        fs.closeSync(fd);
+      }
     }
   };
 }
@@ -177,6 +192,8 @@ function migrate(store) {
     CREATE INDEX IF NOT EXISTS idx_rdv_date ON rdv(date_rdv);
     CREATE INDEX IF NOT EXISTS idx_paiements_patient ON paiements(patient_id);
   `);
+  // ── Module Algérie (caisse aveugle, ANPP, file d'attente, médico-légal…) ──
+  dz.migrateDZ(store);
 }
 
 // Les donnees reprises d'un ancien logiciel portaient un marqueur technique
@@ -402,6 +419,7 @@ function seed(store) {
     store.run('UPDATE users SET password_hash = ? WHERE id = ?', [hashPassword('admin'), admin.id]);
   }
   seedMedicaments(store);
+  dz.seedDZ(store);
 }
 
 function addColumn(store, table, column, definition) {
@@ -1069,6 +1087,9 @@ function attachQueries(store) {
       LIMIT 30
     `)
   });
+
+  // ── Module Algérie ──
+  dz.attachDZ(store);
 }
 
 function insert(store, table, payload) {

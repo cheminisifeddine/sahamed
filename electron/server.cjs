@@ -1,5 +1,10 @@
 'use strict';
-const { BrowserWindow } = require('electron');
+// Electron optionnel : outils de preview / tests Node sans GUI
+let BrowserWindow = { getAllWindows: () => [] };
+try {
+  const electron = require('electron');
+  if (electron && electron.BrowserWindow) BrowserWindow = electron.BrowserWindow;
+} catch {}
 const { createServer }  = require('node:http');
 const { Server }        = require('socket.io');
 const fs                = require('node:fs');
@@ -7,8 +12,10 @@ const path              = require('node:path');
 const crypto            = require('node:crypto');
 const os                = require('node:os');
 const guard             = require('./guard.cjs');
+const dz                = require('./dz.cjs');
 
 const DIST_DIR = path.join(__dirname, '..', 'dist');
+const DZ_UI_DIR = path.join(__dirname, 'dz-ui');
 
 // Version réelle de l'app, servie aux postes réseau (auparavant '1.0.0' en dur).
 let APP_VERSION = '0.0.0';
@@ -70,11 +77,49 @@ function startSocketServer(db, port = 3789, userDataPath = null) {
       return;
     }
 
+    // ── Écran TV salle d'attente (sans session : affichage public local) ──
+    if (url === '/tv' && req.method === 'GET') {
+      const tv = path.join(__dirname, 'tv.html');
+      if (fs.existsSync(tv)) {
+        const buf = fs.readFileSync(tv);
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end(buf);
+      } else { res.writeHead(503); res.end('TV non disponible'); }
+      return;
+    }
+
+    // ── Modules DZ (hub + pages, 100% local) ──────────────────────────
+    if (url === '/dz' || url === '/dz/') {
+      const hub = path.join(DZ_UI_DIR, 'hub.html');
+      if (fs.existsSync(hub)) {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+        fs.createReadStream(hub).pipe(res);
+      } else { res.writeHead(503); res.end('Modules DZ non disponibles'); }
+      return;
+    }
+    if (url.startsWith('/dz/')) {
+      const rel = decodeURIComponent(url.slice(4)).replace(/\.\./g, '');
+      const fp = path.join(DZ_UI_DIR, rel === '' ? 'hub.html' : rel);
+      if (fs.existsSync(fp) && fs.statSync(fp).isFile()) {
+        const mime = MIME[path.extname(fp)] || 'application/octet-stream';
+        res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'no-store' });
+        fs.createReadStream(fp).pipe(res);
+      } else { res.writeHead(404); res.end('Not found'); }
+      return;
+    }
+
     // ── Fichiers statiques (app React buildée) ─────────────────────
     if (!url.startsWith('/socket.io')) serveStatic(req, res, url);
   });
 
   io = new Server(httpServer, { cors: { origin: '*' } });
+
+  // Preview live : rechargement navigateur + push des mutations données
+  if (process.env.SAHAMED_LIVE === '1') {
+    httpServer.on('listening', () => {
+      console.log(`[SahaMed] LIVE preview — http://127.0.0.1:${port} (reload auto activé)`);
+    });
+  }
 
   io.on('connection', (socket) => {
     socket.emit('chat:history', db.services.listMessages());
@@ -128,6 +173,42 @@ function startSocketServer(db, port = 3789, userDataPath = null) {
 }
 
 /* ─── Fichiers statiques ─────────────────────────────────────────── */
+// Pont officiel vers les Modules DZ : le frontend React est un bundle compilé
+// sans sources ; ce bouton discret sur la page d'accueil mène au hub /dz/.
+const DZ_LAUNCHER = `<a href="/dz/" style="position:fixed;bottom:14px;left:14px;z-index:99999;background:#0b1e3a;color:#fff;padding:9px 14px;border-radius:999px;font:600 13px system-ui,sans-serif;text-decoration:none;box-shadow:0 2px 10px rgba(0,0,0,.4);border:1px solid #38bdf8" title="Modules Algérie — caisse, posologie, file, documents">&#x1F1E9;&#x1F1FF; Modules DZ</a>`;
+const LIVE_SNIPPET = `
+<script src="/socket.io/socket.io.js"></script>
+<script>
+(function () {
+  if (window.__sahaLive) return;
+  window.__sahaLive = true;
+  var reloadTimer = null;
+  function scheduleReload(reason) {
+    clearTimeout(reloadTimer);
+    reloadTimer = setTimeout(function () {
+      var ae = document.activeElement;
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+      if (document.querySelector('[role="dialog"], .modal, [aria-modal="true"]')) return;
+      console.log('[SahaMed LIVE] reload —', reason);
+      location.reload();
+    }, 280);
+  }
+  function connect() {
+    var s = io({ transports: ['websocket', 'polling'] });
+    s.on('preview:reload', function () { scheduleReload('fichier modifié'); });
+    [
+      'patients:changed', 'rdv:changed', 'consultations:changed',
+      'ordonnances:changed', 'paiements:changed', 'paiement:created',
+      'caisse:alerte', 'file:appel', 'file:changed', 'actes:changed'
+    ].forEach(function (ev) {
+      s.on(ev, function () { scheduleReload('données: ' + ev); });
+    });
+    s.on('connect_error', function () { setTimeout(connect, 2000); });
+  }
+  connect();
+})();
+</script>`;
+
 function serveStatic(req, res, url) {
   if (!fs.existsSync(DIST_DIR)) {
     res.writeHead(503, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -144,7 +225,23 @@ function serveStatic(req, res, url) {
 
   const ext  = path.extname(filePath);
   const mime = MIME[ext] || 'application/octet-stream';
-  res.writeHead(200, { 'Content-Type': mime });
+
+  // Lanceur DZ sur l'accueil (prod comme preview) + LIVE reload en preview.
+  if (ext === '.html' && (process.env.SAHAMED_LIVE === '1' || path.basename(filePath) === 'index.html')) {
+    let html = fs.readFileSync(filePath, 'utf8');
+    if (!html.includes('/dz/') && html.includes('</body>')) html = html.replace('</body>', `${DZ_LAUNCHER}</body>`);
+    else if (!html.includes('/dz/')) html += DZ_LAUNCHER;
+    if (process.env.SAHAMED_LIVE === '1') {
+      if (html.includes('</body>')) html = html.replace('</body>', `${LIVE_SNIPPET}</body>`);
+      else html += LIVE_SNIPPET;
+    }
+    const buf = Buffer.from(html, 'utf8');
+    res.writeHead(200, { 'Content-Type': mime, 'Content-Length': buf.length, 'Cache-Control': 'no-store' });
+    res.end(buf);
+    return;
+  }
+
+  res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': process.env.SAHAMED_LIVE === '1' ? 'no-store' : undefined });
   fs.createReadStream(filePath).pipe(res);
 }
 
@@ -198,6 +295,8 @@ async function handleApi(req, res, db, sessions, getIo) {
 
   if (channel === 'system:version') return send({ ok: true, data: APP_VERSION });
   if (channel === 'system:localIP') return send({ ok: true, data: getLocalIP() });
+  // TV salle d'attente : lecture publique (LAN uniquement, nom + ticket + statut — sans données sensibles)
+  if (channel === 'dz:file.list') return send({ ok: true, data: db.services.dzFileList() });
 
   // ── Vérification session ────────────────────────────────────────
   const rawToken = (req.headers.authorization || '').replace('Bearer ', '').trim();
@@ -332,8 +431,15 @@ async function handleApi(req, res, db, sessions, getIo) {
       case 'actes:update': { mustBeMedecin(); data = db.services.saveActe({ ...a1, id: a0 }); break; }
       // (system:* et guard:* sont traités plus haut, en canaux publics)
 
-      default:
-        return send({ ok: false, error: `Canal non supporté: ${channel}` });
+      // ── Module Algérie (dz:*) : caisse aveugle, ANPP, file, médico-légal… ──
+      default: {
+        const r = dz.dispatchDZ(db, channel, args, {
+          sessionUser,
+          emit: (ev, payload) => { io.emit(ev, payload); broadcastToWindows(ev, payload); },
+        });
+        if (!r.handled) return send({ ok: false, error: `Canal non supporté: ${channel}` });
+        data = r.data; break;
+      }
     }
     send({ ok: true, data });
   } catch (e) {

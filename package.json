@@ -39,6 +39,7 @@
   },
   "scripts": {
     "start": "electron .",
+    "preview": "node tools/live-preview.cjs",
     "reset-admin": "node tools/reset-admin.js",
     "export-clients": "node tools/export-clients.js",
     "find-db": "node tools/find-db.js",

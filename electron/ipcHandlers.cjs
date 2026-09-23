@@ -3,6 +3,7 @@ const { app, ipcMain, shell, dialog, BrowserWindow } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
+const dz = require('./dz.cjs');
 
 let sessionUser = null;
 
@@ -683,6 +684,12 @@ function registerIpcHandlers(db, socketServer) {
     } finally {
       if (!testWin.isDestroyed()) testWin.close();
     }
+  });
+
+  // ── Module Algérie (dz:*) : mêmes canaux que le serveur réseau ──
+  dz.registerDzIpc(db, ipcMain, socketServer, {
+    requireAuth,
+    sessionUser: () => sessionUser,
   });
 }
 

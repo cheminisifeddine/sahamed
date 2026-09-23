@@ -1,0 +1,49 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>File d'attente — SahaMed DZ</title><link rel="stylesheet" href="/dz/dz.css"></head><body>
+<header class="top"><a href="/dz/">← Modules</a><h1>📢 File d'attente <span dir="rtl">الدور</span></h1><span id="lic"></span></header>
+<main>
+  <div class="panel"><h2>Nouveau ticket</h2>
+    <div class="row">
+      <div><label>Nom affiché</label><input id="nom" placeholder="ex : BENALI Ahmed"></div>
+      <div><label>Priorité</label><select id="prio"><option>NORMALE</option><option>URGENCE</option><option>CONTROLE</option><option>PRIORITAIRE</option></select></div>
+      <div><label>Salle</label><input id="salle" value="Cabinet 1"></div>
+    </div>
+    <button id="b-add">🎫 Ajouter</button>
+    <a href="/tv" target="_blank"><button class="ghost" type="button">📺 Ouvrir l'écran TV</button></a>
+  </div>
+  <div class="panel"><h2>En ce moment (temps réel)</h2><div id="list">…</div>
+    <button id="b-reset" class="danger">🧹 Clôturer la journée (médecin)</button>
+  </div>
+</main>
+<script src="/socket.io/socket.io.js"></script><script src="/dz/dz.js"></script>
+<script>(async function () {
+  DZ.licenseChip(document.getElementById('lic'));
+  async function refresh() {
+    try {
+      const rows = await DZ.rpc('dz:file.list', []);
+      document.getElementById('list').innerHTML = '<table><tr><th>N°</th><th>Patient</th><th>Priorité</th><th>Statut</th><th>Salle</th><th></th></tr>' + rows.map(r =>
+        `<tr><td><b>${r.ticket_numero}</b></td><td>${DZ.esc(r.nom_affiche)}</td><td><span class="badge ${r.priorite === 'NORMALE' ? '' : 'red'}">${r.priorite}</span></td><td>${r.statut}</td><td>${DZ.esc(r.salle || '')}</td>
+        <td class="noprint">${r.statut === 'ATTENTE' ? `<button data-call="${r.ticket_numero}">📢 Appeler</button>` : ''} ${r.statut !== 'TERMINE' ? `<button class="ghost" data-done="${r.ticket_numero}">✔</button> <button class="ghost" data-abs="${r.ticket_numero}">✖</button>` : ''}</td></tr>`).join('') + '</table>';
+      document.querySelectorAll('[data-call]').forEach(b => b.onclick = () => act(+b.dataset.call, 'EN_CONSULTATION'));
+      document.querySelectorAll('[data-done]').forEach(b => b.onclick = () => act(+b.dataset.done, 'TERMINE'));
+      document.querySelectorAll('[data-abs]').forEach(b => b.onclick = () => act(+b.dataset.abs, 'ABSENT'));
+    } catch(e) { document.getElementById('list').textContent = e.message; }
+  }
+  async function act(ticket, statut) {
+    try { await DZ.rpc('dz:ticket.statut', [{ ticket, statut }]); } catch(e) { DZ.toast(e.message, false); }
+  }
+  document.getElementById('b-add').onclick = async () => {
+    try {
+      const t = await DZ.rpc('dz:ticket.create', [{ nom_affiche: document.getElementById('nom').value, priorite: document.getElementById('prio').value, salle: document.getElementById('salle').value }]);
+      DZ.toast('Ticket N° ' + t.ticket_numero);
+      document.getElementById('nom').value = '';
+    } catch(e) { DZ.toast(e.message, false); }
+  };
+  document.getElementById('b-reset').onclick = async () => {
+    if (!confirm('Clôturer tous les tickets du jour ?')) return;
+    try { await DZ.rpc('dz:file.reset', []); DZ.toast('Journée clôturée'); } catch(e) { DZ.toast(e.message, false); }
+  };
+  const s = io({ transports: ['websocket','polling'] });
+  s.on('file:changed', refresh);
+  refresh();
+})();</script></body></html>

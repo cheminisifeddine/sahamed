@@ -1,13 +1,14 @@
 'use strict';
 /**
- * SahaMed — garde produit locale (aucune DRM d'ancien éditeur).
- * Toujours active pour l'usage hors-ligne du cabinet.
+ * SahaMed — garde produit : licence perpétuelle hors-ligne (Ed25519).
+ * Délègue à license.cjs ; conservée comme façade pour ne rien casser.
  */
-function init(/* userDataPath */) {}
+const license = require('./license.cjs');
+function init(userDataPath) { license.init(userDataPath); }
 function status() {
-  return { mode: 'bound', ref: 'SAHA-LOCAL' };
+  try { return license.status(); } catch { return { mode: 'trial', daysLeft: 30 }; }
 }
-function bind(/* token */) {
-  return true;
+function bind(token) {
+  return license.bind(token);
 }
 module.exports = { init, status, bind };

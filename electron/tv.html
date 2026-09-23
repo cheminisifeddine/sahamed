@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SahaMed — Salle d'attente</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #0b1e3a; color: #fff; min-height: 100vh; display: flex; flex-direction: column; }
+  header { display: flex; justify-content: space-between; align-items: center; padding: 18px 32px; background: #10294f; }
+  header h1 { font-size: 30px; }
+  header h1 span { color: #38bdf8; }
+  #clock { font-size: 26px; font-variant-numeric: tabular-nums; }
+  main { flex: 1; display: grid; grid-template-columns: 2fr 1fr; gap: 16px; padding: 16px 32px; }
+  .card { background: #132f5c; border-radius: 14px; padding: 18px 22px; }
+  .card h2 { font-size: 20px; margin-bottom: 12px; color: #bae6fd; }
+  #current { text-align: center; padding: 30px 10px; }
+  #current .ticket { font-size: 110px; font-weight: 800; color: #4ade80; line-height: 1; }
+  #current .name { font-size: 44px; margin-top: 8px; }
+  #current .room { font-size: 34px; margin-top: 6px; color: #fbbf24; }
+  #list { list-style: none; }
+  #list li { display: flex; justify-content: space-between; align-items: center; font-size: 24px; padding: 10px 6px; border-bottom: 1px solid #1e3f73; }
+  .badge { font-size: 15px; padding: 4px 12px; border-radius: 999px; background: #1d4ed8; }
+  .badge.URGENCE { background: #dc2626; }
+  .badge.CONTROLE { background: #0d9488; }
+  .badge.PRIORITAIRE { background: #b45309; }
+  #ticker { background: #0a1730; padding: 12px 0; overflow: hidden; white-space: nowrap; font-size: 20px; color: #fde68a; }
+  #ticker span { display: inline-block; padding-left: 100%; animation: defile 30s linear infinite; }
+  @keyframes defile { to { transform: translateX(-100%); } }
+  #prayers { display: flex; gap: 18px; font-size: 17px; color: #cbd5e1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>SahaMed <span>— Salle d'attente</span> <span dir="rtl">قاعة الانتظار</span></h1>
+  <div style="display:flex;gap:28px;align-items:center">
+    <div id="prayers"></div>
+    <div id="clock">--:--</div>
+  </div>
+</header>
+<main>
+  <section class="card" id="current">
+    <h2>Patient appelé / <span dir="rtl">المريض المنادى</span></h2>
+    <div class="ticket" id="cur-ticket">—</div>
+    <div class="name" id="cur-name">En attente…</div>
+    <div class="room" id="cur-room"></div>
+  </section>
+  <section class="card">
+    <h2>File d'attente / <span dir="rtl">الدور</span></h2>
+    <ul id="list"></ul>
+  </section>
+</main>
+<div id="ticker"><span id="ticker-text">Pensez à apporter votre carte CHIFA et vos anciennes ordonnances • يرجى إحضار بطاقة الشفاء والوصفات القديمة •</span></div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+(function () {
+  var lastCall = 0;
+  function horloge() {
+    var d = new Date();
+    document.getElementById('clock').textContent = d.toLocaleTimeString('fr-DZ', { hour: '2-digit', minute: '2-digit' });
+  }
+  setInterval(horloge, 1000); horloge();
+
+  // Horaires de prière indicatifs (Alger) — réglables, 100% hors-ligne.
+  var prayers = [['الفجر', '05:45'], ['الظهر', '12:30'], ['العصر', '15:45'], ['المغرب', '18:10'], ['العشاء', '19:30']];
+  document.getElementById('prayers').innerHTML = prayers.map(function (p) { return '<span>' + p[0] + ' ' + p[1] + '</span>'; }).join('');
+
+  function render(rows) {
+    var enCours = rows.filter(function (r) { return r.statut === 'EN_CONSULTATION'; })[0];
+    var attente = rows.filter(function (r) { return r.statut === 'ATTENTE'; });
+    if (enCours) {
+      document.getElementById('cur-ticket').textContent = 'N° ' + enCours.ticket_numero;
+      document.getElementById('cur-name').textContent = enCours.nom_affiche;
+      document.getElementById('cur-room').textContent = (enCours.salle || '') + ' / ' + 'تفضلوا إلى قاعة الفحص';
+    }
+    document.getElementById('list').innerHTML = attente.map(function (r) {
+      return '<li><span><b>N° ' + r.ticket_numero + '</b> — ' + escapeHtml(r.nom_affiche) + '</span>' +
+        '<span class="badge ' + r.priorite + '">' + r.priorite + '</span></li>';
+    }).join('') || '<li>Aucun patient en attente</li>';
+  }
+  function escapeHtml(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  function appeler(ticket) {
+    // Carillon + annonce bilingue (Web Speech API, hors-ligne si voix locales).
+    try {
+      var ctx = new (window.AudioContext || window.webkitAudioContext)();
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = 880; g.gain.value = 0.15;
+      o.start(); o.stop(ctx.currentTime + 0.6);
+    } catch (e) {}
+    var msgs = [
+      { lang: 'fr-FR', text: 'Ticket numéro ' + ticket.ticket_numero + ', ' + ticket.nom_affiche + ', veuillez vous présenter : ' + (ticket.salle || 'cabinet') },
+      { lang: 'ar-DZ', text: 'المريض رقم ' + ticket.ticket_numero + ' إلى قاعة الفحص' }
+    ];
+    var i = 0;
+    (function next() {
+      if (i >= msgs.length || !('speechSynthesis' in window)) return;
+      var u = new SpeechSynthesisUtterance(msgs[i].text);
+      u.lang = msgs[i].lang; i++;
+      u.onend = next;
+      try { speechSynthesis.speak(u); } catch (e) { next(); }
+    })();
+  }
+
+  function refresh() {
+    fetch('/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: 'dz:file.list', args: [] }) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { if (j.ok) render(j.data); })
+      .catch(function () {});
+  }
+
+  var s = io({ transports: ['websocket', 'polling'] });
+  s.on('file:changed', refresh);
+  s.on('file:appel', function (t) { refresh(); if (t && t.ticket_numero !== lastCall) { lastCall = t.ticket_numero; appeler(t); } });
+  s.on('connect_error', function () { setTimeout(function () { s.connect(); }, 3000); });
+  refresh();
+  setInterval(refresh, 15000);
+})();
+</script>
+</body>
+</html>

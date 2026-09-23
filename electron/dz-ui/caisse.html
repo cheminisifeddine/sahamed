@@ -1,0 +1,69 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Caisse à l'aveugle — SahaMed DZ</title><link rel="stylesheet" href="/dz/dz.css"></head><body>
+<header class="top"><a href="/dz/">← Modules</a><h1>💰 Caisse à l'aveugle <span dir="rtl">الصندوق</span></h1><span id="lic"></span></header>
+<main>
+  <div class="panel" id="p-blind"><h2>État du jour (sans montants — écran secrétaire)</h2><div id="statut">…</div></div>
+  <div class="panel" id="p-doctor" style="display:none"><h2>Vue médecin — montants & rapports</h2>
+    <div id="attendu"></div>
+    <div class="row"><div><label>Mois du rapport (AAAA-MM)</label><input id="rap-mois" placeholder="2026-09"></div></div>
+    <button id="b-rapport">Afficher les clôtures</button><div id="rapport"></div>
+    <h2 style="margin-top:14px">Alertes d'écart (temps réel)</h2><div id="alertes"></div>
+  </div>
+  <div class="panel"><h2>Clôture de shift — comptage physique des billets <span dir="rtl">عد الأوراق النقدية</span></h2>
+    <div class="row">
+      <div><label>Billets 2000</label><input id="b2000" type="number" min="0" value="0"></div>
+      <div><label>Billets 1000</label><input id="b1000" type="number" min="0" value="0"></div>
+      <div><label>Billets 500</label><input id="b500" type="number" min="0" value="0"></div>
+      <div><label>Billets 200</label><input id="b200" type="number" min="0" value="0"></div>
+      <div><label>Billets 100</label><input id="b100" type="number" min="0" value="0"></div>
+      <div><label>Pièces (DZD)</label><input id="pieces" type="number" min="0" value="0"></div>
+    </div>
+    <div><label>Votre nom</label><input id="nom" placeholder="Nom de la secrétaire"></div>
+    <div><b>Total compté : <span id="total">0</span> DZD</b></div>
+    <button id="b-cloturer">🔒 Verrouiller la clôture</button>
+  </div>
+</main>
+<script src="/socket.io/socket.io.js"></script><script src="/dz/dz.js"></script>
+<script>(async function () {
+  DZ.licenseChip(document.getElementById('lic'));
+  const ids = ['b2000','b1000','b500','b200','b100'];
+  const dens = [2000,1000,500,200,100];
+  function total() {
+    let t = ids.reduce((a,id,i) => a + (+document.getElementById(id).value || 0) * dens[i], 0) + (+document.getElementById('pieces').value || 0);
+    document.getElementById('total').textContent = t.toLocaleString('fr-DZ');
+  }
+  [...ids,'pieces'].forEach(id => document.getElementById(id).addEventListener('input', total));
+  try {
+    const st = await DZ.rpc('dz:caisse.statut', []);
+    document.getElementById('statut').innerHTML = st.cloture
+      ? '<span class="badge green">🔒 Clôturé et verrouillé</span>' : '<span class="badge amber">🟡 Shift ouvert — en cours</span>';
+  } catch(e) { document.getElementById('statut').textContent = e.message; }
+  try {
+    const at = await DZ.rpc('dz:caisse.attendu', []);
+    document.getElementById('p-doctor').style.display = 'block';
+    document.getElementById('attendu').innerHTML = `Attendu ce jour : <b>${DZ.money(at.total_attendu)}</b>`;
+  } catch(e) { /* secrétaire : pas de montants, c'est normal */ }
+  document.getElementById('b-cloturer').onclick = async () => {
+    const billets = { pieces: +document.getElementById('pieces').value || 0 };
+    ids.forEach((id,i) => billets[dens[i]] = +document.getElementById(id).value || 0);
+    try {
+      const r = await DZ.rpc('dz:caisse.cloturer', [{ billets, secretaire_nom: document.getElementById('nom').value }]);
+      DZ.toast(r.message || `Écart : ${r.ecart} DZD (${r.statut})`, true);
+      location.reload();
+    } catch(e) { DZ.toast(e.message, false); }
+  };
+  document.getElementById('b-rapport').onclick = async () => {
+    try {
+      const m = document.getElementById('rap-mois').value;
+      const rows = await DZ.rpc('dz:caisse.rapport', [{ from: m ? m + '-01' : null, to: m ? m + '-31' : null }]);
+      document.getElementById('rapport').innerHTML = '<table><tr><th>Jour</th><th>Déclaré</th><th>Attendu</th><th>Écart</th><th>Statut</th></tr>' +
+        rows.map(r => `<tr><td>${r.jour}</td><td>${DZ.money(r.total_declare_dzd)}</td><td>${DZ.money(r.total_attendu_dzd)}</td><td><b>${r.ecart_dzd}</b></td><td>${r.statut}</td></tr>`).join('') + '</table>';
+    } catch(e) { DZ.toast(e.message, false); }
+  };
+  const s = io({ transports: ['websocket','polling'] });
+  s.on('caisse:alerte', d => {
+    document.getElementById('alertes').innerHTML =
+      `<div class="alert ${d.ecart !== 0 ? 'CRITIQUE' : 'MODEREE'}">🚨 Clôture ${d.jour} — déclaré ${DZ.money(d.total_declare)}, attendu ${DZ.money(d.total_attendu)}, <b>écart ${d.ecart} (${d.statut})</b></div>`
+      + document.getElementById('alertes').innerHTML;
+  });
+})();</script></body></html>
