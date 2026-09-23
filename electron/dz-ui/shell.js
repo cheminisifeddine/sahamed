@@ -11,8 +11,6 @@
       icon: '<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/>' },
     { key: 'dz-docs', label: 'Médico-légal', page: '/dz/docs.html', title: 'Arrêts, psychotropes, CBV, mutuelles',
       icon: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>' },
-    { key: 'dz-caisse', label: 'Caisse DZ', page: '/dz/caisse.html', title: 'Clôture par billets, écarts médecin',
-      icon: '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01"/><path d="M18 12h.01"/>' },
     { key: 'dz-ingest', label: 'Reprise legacy', page: '/dz/ingest.html', title: 'MedWin / Access → Clinixos',
       icon: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>' },
     { key: 'dz-backup', label: 'Sauvegarde', page: '/dz/backup.html', title: 'Snapshot chiffré AES-256, USB, R2',

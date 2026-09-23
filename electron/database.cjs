@@ -593,10 +593,11 @@ function attachQueries(store) {
   // Construit la clause WHERE + parametres partages entre listPatients et countPatients,
   // avec recherche par mots-cles insensible a l'ordre (voir listPatients).
   function patientsFilterClause(filters) {
-    const search = typeof filters === 'object' ? filters.search || '' : filters;
-    const sexe = typeof filters === 'object' ? filters.sexe || '' : '';
-    const tel = typeof filters === 'object' ? filters.telephone || '' : '';
-    const groupe = typeof filters === 'object' ? filters.groupe_sanguin || '' : '';
+    const isObj = filters !== null && typeof filters === 'object';
+    const search = isObj ? filters.search || '' : (filters ?? '');
+    const sexe = isObj ? filters.sexe || '' : '';
+    const tel = isObj ? filters.telephone || '' : '';
+    const groupe = isObj ? filters.groupe_sanguin || '' : '';
     const telLike = tel ? `%${tel}%` : '';
     const tokens = String(search || '').trim().split(/\s+/).filter(Boolean);
 
@@ -622,8 +623,10 @@ function attachQueries(store) {
     };
   }
   s.listPatients = (filters = '') => {
-    const limit = Number(typeof filters === 'object' ? filters.limit || 200 : 200);
-    const offset = Number(typeof filters === 'object' ? filters.offset || 0 : 0);
+    if (filters === null || filters === undefined) filters = '';
+    const isObj = typeof filters === 'object' && filters !== null;
+    const limit = Number(isObj ? filters.limit || 200 : 200);
+    const offset = Number(isObj ? filters.offset || 0 : 0);
     const { where, params } = patientsFilterClause(filters);
     return store.all(`
     SELECT *, CAST((julianday('now') - julianday(date_naissance)) / 365.25 AS INTEGER) AS age FROM patients
@@ -714,7 +717,7 @@ function attachQueries(store) {
     return s.getPatient(id);
   };
   s.deletePatient = (id) => store.run('DELETE FROM patients WHERE id = ?', [id]).changes > 0;
-  s.listConsultations = (patientId) => store.all(`SELECT c.*, u.nom || ' ' || u.prenom AS praticien FROM consultations c JOIN users u ON u.id=c.user_id WHERE c.patient_id=? ORDER BY c.date_consultation DESC`, [patientId]);
+  s.listConsultations = (patientId) => store.all(`SELECT c.*, u.nom || ' ' || u.prenom AS praticien FROM consultations c JOIN users u ON u.id=c.user_id WHERE c.patient_id=? ORDER BY c.date_consultation DESC`, [patientId ?? null]);
   s.getConsultation = (id) => store.get(`SELECT c.*, p.nom AS patient_nom, p.prenom AS patient_prenom, u.nom || ' ' || u.prenom AS praticien FROM consultations c JOIN patients p ON p.id=c.patient_id JOIN users u ON u.id=c.user_id WHERE c.id=?`, [id]);
   s.getConsultationsJour = (date) => store.all(`SELECT c.*, p.nom || ' ' || p.prenom AS patient_nom FROM consultations c JOIN patients p ON p.id=c.patient_id WHERE date(c.date_consultation)=date(?) ORDER BY c.date_consultation DESC`, [date || today()]);
   s.listConsultationsRange = (from, to) => store.all(
@@ -758,7 +761,7 @@ function attachQueries(store) {
     WHERE r.date_rdv = date(?)
     ORDER BY r.heure_debut
   `, [date || today()]);
-  s.listOrdonnances = (patientId) => store.all('SELECT * FROM ordonnances WHERE patient_id=? ORDER BY date_ordonnance DESC', [patientId]);
+  s.listOrdonnances = (patientId) => store.all('SELECT * FROM ordonnances WHERE patient_id=? ORDER BY date_ordonnance DESC', [patientId ?? null]);
   s.createOrdonnance = (data) => {
     const numero = genererNumeroOrdonnance(store, data.date_ordonnance);
     const res = insert(store, 'ordonnances', {
@@ -808,7 +811,7 @@ function attachQueries(store) {
     `, [...params, limit, offset]);
   };
   s.getOrdonnance = (id) => store.get('SELECT o.*, p.nom AS patient_nom, p.prenom AS patient_prenom, p.date_naissance FROM ordonnances o JOIN patients p ON p.id=o.patient_id WHERE o.id=?', [id]);
-  s.listDocuments = (patientId) => store.all('SELECT * FROM documents WHERE patient_id=? ORDER BY date_document DESC', [patientId]);
+  s.listDocuments = (patientId) => store.all('SELECT * FROM documents WHERE patient_id=? ORDER BY date_document DESC', [patientId ?? null]);
   s.createDocument = (data) => {
     const type = data.type || 'autre';
     const PREFIX_MAP = { certificat:'CERT', arret_travail:'ARRT', courrier:'COUR', resultat_labo:'LABO', imagerie:'IMAG', compte_rendu:'CRDU', autre:'AUTR' };

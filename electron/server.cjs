@@ -445,7 +445,8 @@ async function handleApi(req, res, db, sessions, getIo) {
     }
     send({ ok: true, data });
   } catch (e) {
-    send({ ok: false, error: e.message });
+    // sql.js peut throw une string (pas Error) → e.message undefined → {"ok":false} muet
+    send({ ok: false, error: (e && e.message) || String(e) || 'Erreur inconnue' });
   }
 }
 
