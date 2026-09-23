@@ -1,6 +1,6 @@
-# SahaMed
+# Clinixos
 
-**SahaMed** — logiciel **100 % hors-ligne** de gestion de cabinet médical (Algérie).
+**Clinixos** — logiciel **100 % hors-ligne** de gestion de cabinet médical (Algérie).
 
 Poste serveur Electron + interface web, base SQLite locale, postes secrets en réseau local.  
 Aucune dépendance cloud obligatoire : le cabinet fonctionne sans Internet.
@@ -38,8 +38,8 @@ Identifiant initial : `admin` / `admin`
 
 | OS | Dossier |
 |----|---------|
-| Linux | `~/.config/SahaMed/` |
-| Windows | `%APPDATA%\SahaMed\` |
+| Linux | `~/.config/Clinixos/` |
+| Windows | `%APPDATA%\Clinixos\` |
 
 Fichiers importants : `sahamed.db`, `network-mode.json`, `cloud-backup.json` (optionnel), `sessions.json`.
 
@@ -70,14 +70,14 @@ Si vous n'avez **pas** de config, l'app reste purement locale — rien n'est env
 Déclenchement manuel :
 
 ```bash
-node tools/cloud-backup.js ~/.config/SahaMed
+node tools/cloud-backup.js ~/.config/Clinixos
 ```
 
 Depuis l'app (IPC) : canal `backup:cloud`.
 
 ## Identité produit
 
-- Nom : **SahaMed**
+- Nom : **Clinixos**
 - Paquet npm : `sahamed`
 - Protocole local : `sahamed:///`
 - Aucune DRM / compte distant requis.

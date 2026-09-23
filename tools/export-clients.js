@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Export SahaMed patients (client list) + optional full dump to CSV/JSON.
+ * Export Clinixos patients (client list) + optional full dump to CSV/JSON.
  * Usage:
  *   node tools/export-clients.js /path/to/sahamed.db
  *   node tools/export-clients.js /path/to/sahamed.db /path/outdir

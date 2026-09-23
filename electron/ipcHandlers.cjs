@@ -458,7 +458,7 @@ function registerIpcHandlers(db, socketServer) {
       const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       const result = await dialog.showSaveDialog(win, {
         title: 'Sauvegarder la base de donnees',
-        defaultPath: path.join(app.getPath('documents'), `SahaMed_backup_${date}.db`),
+        defaultPath: path.join(app.getPath('documents'), `Clinixos_backup_${date}.db`),
         filters: [{ name: 'Base de donnees', extensions: ['db'] }]
       });
       if (result.canceled || !result.filePath) return { ok: true, data: null };
@@ -631,7 +631,7 @@ function registerIpcHandlers(db, socketServer) {
         return { ok: true, data: true };
       } catch (erreurPdf) {
         // Repli sur l'impression directe : mieux vaut un tirage mal cale que rien.
-        console.warn('[SahaMed] Impression via PDF impossible, repli :', erreurPdf.message);
+        console.warn('[Clinixos] Impression via PDF impossible, repli :', erreurPdf.message);
         const repli = await printWithTimeout(fenetre.webContents, {
           silent: !avecDialogue,
           printBackground: true,
@@ -668,7 +668,7 @@ function registerIpcHandlers(db, socketServer) {
         p{font-size:12px;margin:4px 0;color:#333}
         .box{border:1px solid #999;border-radius:6px;padding:12px;margin-top:16px}
       </style></head><body>
-        <h1>SahaMed — Impression test</h1>
+        <h1>Clinixos — Impression test</h1>
         <p>Date : ${new Date().toLocaleString('fr-FR')}</p>
         <p>Imprimante configurée : ${printerName}</p>
         <p>Format papier : ${format}</p>

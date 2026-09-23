@@ -1,5 +1,5 @@
 'use strict';
-/* SahaMed — Licence perpétuelle hors-ligne (asymétrique Ed25519).
+/* Clinixos — Licence perpétuelle hors-ligne (asymétrique Ed25519).
  * 1. L'app calcule une empreinte machine stable (MAC + hostname + OS).
  * 2. Elle affiche un code d'activation (16 caractères) → transmis par SMS/WhatsApp.
  * 3. Le vendeur signe avec la clé PRIVÉE (jamais dans ce dépôt) via tools/license-sign.js.

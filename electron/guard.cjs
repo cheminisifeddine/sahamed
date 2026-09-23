@@ -1,6 +1,6 @@
 'use strict';
 /**
- * SahaMed — garde produit : licence perpétuelle hors-ligne (Ed25519).
+ * Clinixos — garde produit : licence perpétuelle hors-ligne (Ed25519).
  * Délègue à license.cjs ; conservée comme façade pour ne rien casser.
  */
 const license = require('./license.cjs');

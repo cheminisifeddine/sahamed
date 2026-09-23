@@ -12,7 +12,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 
 async function main() {
-  const userData = process.argv[2] || path.join(os.homedir(), '.config', 'SahaMed');
+  const userData = process.argv[2] || path.join(os.homedir(), '.config', 'Clinixos');
   const cfgPath = path.join(userData, 'cloud-backup.json');
   if (!fs.existsSync(cfgPath)) {
     console.error(`Config absente : ${cfgPath}`);

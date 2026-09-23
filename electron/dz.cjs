@@ -1,6 +1,6 @@
 'use strict';
 /* ─────────────────────────────────────────────────────────────────────────
- * SahaMed DZ — Module Algérie : caisse à l'aveugle, posologie pédiatrique,
+ * Clinixos DZ — Module Algérie : caisse à l'aveugle, posologie pédiatrique,
  * DDI, équivalences DCI/ANPP, file d'attente TV, documents médico-légaux
  * (arrêt de travail, psychotropes 19-379, CBV/ITT, mutuelles), WhatsApp,
  * ingestion legacy, backup chiffré, audit HMAC-SHA256.
@@ -681,16 +681,16 @@ function attachDZ(store) {
     const tag = cipher.getAuthTag();
     const blob = Buffer.concat([Buffer.from('SHMDZ1'), iv, tag, enc]);
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const name = `SahaMed_${stamp}.shmdz`;
+    const name = `Clinixos_${stamp}.shmdz`;
     const targets = [];
-    const base = dossier || path.join(os.homedir(), 'SahaMed_Backups');
+    const base = dossier || path.join(os.homedir(), 'Clinixos_Backups');
     fs.mkdirSync(base, { recursive: true });
     const local = path.join(base, name);
     fs.writeFileSync(local, blob);
     targets.push(local);
     for (const usb of detectUSB()) {
       try {
-        const dir = path.join(usb, 'SahaMed_Backups');
+        const dir = path.join(usb, 'Clinixos_Backups');
         fs.mkdirSync(dir, { recursive: true });
         // Rotation 30 jours : purge les plus vieux
         const olds = fs.readdirSync(dir).filter((f) => f.endsWith('.shmdz')).sort();

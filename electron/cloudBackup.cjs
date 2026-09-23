@@ -1,6 +1,6 @@
 'use strict';
 /**
- * SahaMed — sauvegarde automatique Cloudflare (D1 + R2).
+ * Clinixos — sauvegarde automatique Cloudflare (D1 + R2).
  * 100% optionnelle : sans config, l'app reste 100% hors-ligne.
  *
  * Config : <userData>/cloud-backup.json
@@ -208,7 +208,7 @@ async function runBackup(db, userDataPath) {
 function startAutoBackup(db, userDataPath) {
   const cfg = loadConfig(userDataPath);
   if (!cfg) {
-    console.log('[SahaMed] Sauvegarde Cloudflare inactive (pas de cloud-backup.json).');
+    console.log('[Clinixos] Sauvegarde Cloudflare inactive (pas de cloud-backup.json).');
     return { stop() {}, trigger: async () => ({ ok: false, error: 'non configurée' }) };
   }
   const minutes = Math.max(5, Number(cfg.intervalMinutes) || 60);
@@ -220,7 +220,7 @@ function startAutoBackup(db, userDataPath) {
     try {
       const result = await runBackup(db, userDataPath);
       console.log(
-        '[SahaMed] Backup Cloudflare →',
+        '[Clinixos] Backup Cloudflare →',
         result.ok
           ? `OK R2=${result.r2 ? 'oui' : 'non'} D1=${result.d1 ? 'oui' : 'non'} ${result.r2Key || ''}`
           : `ÉCHEC ${result.error}`
@@ -237,7 +237,7 @@ function startAutoBackup(db, userDataPath) {
   const kickoff = setTimeout(() => { trigger().catch(() => {}); }, 15_000);
   if (typeof kickoff.unref === 'function') kickoff.unref();
 
-  console.log(`[SahaMed] Sauvegarde Cloudflare auto toutes les ${minutes} min.`);
+  console.log(`[Clinixos] Sauvegarde Cloudflare auto toutes les ${minutes} min.`);
   return {
     stop() { clearInterval(timer); clearTimeout(kickoff); },
     trigger,

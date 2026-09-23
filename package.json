@@ -1,7 +1,7 @@
 {
-  "name": "sahamed",
+  "name": "clinixos",
   "version": "1.0.0",
-  "description": "SahaMed — logiciel 100% hors-ligne de gestion de cabinet medical (Algerie)",
+  "description": "Clinixos — logiciel 100% hors-ligne de gestion de cabinet medical (Algerie)",
   "main": "electron/main.cjs",
   "dependencies": {
     "@fontsource/atkinson-hyperlegible": "^5.3.0",
@@ -46,7 +46,7 @@
     "make-token": "node tools/make-token.js",
     "backup:cloud": "node tools/cloud-backup.js"
   },
-  "productName": "SahaMed",
-  "author": "SahaMed",
+  "productName": "Clinixos",
+  "author": "Clinixos",
   "license": "UNLICENSED"
 }

@@ -1,4 +1,4 @@
-/* SahaMed DZ UI — helper partagé (100% local, zéro dépendance). */
+/* Clinixos DZ UI — helper partagé (100% local, zéro dépendance). */
 (function () {
   // Mode embarqué + thème sombre synchronisé depuis la page parente (shell).
   try {
@@ -46,7 +46,7 @@
       const h = document.createElement('header');
       h.className = 'dz-top';
       h.innerHTML =
-        '<a class="back" href="/">← SahaMed</a>' +
+        '<a class="back" href="/">← Clinixos</a>' +
         '<h1>' + this.esc(title) + (opts.ar ? ' <span dir="rtl" style="opacity:.75;font-weight:600">' + opts.ar + '</span>' : '') + '</h1>' +
         '<span class="dz-lic" id="lic"></span>';
       document.body.insertBefore(h, document.body.firstChild);

@@ -117,7 +117,7 @@ function startSocketServer(db, port = 3789, userDataPath = null) {
   // Preview live : rechargement navigateur + push des mutations données
   if (process.env.SAHAMED_LIVE === '1') {
     httpServer.on('listening', () => {
-      console.log(`[SahaMed] LIVE preview — http://127.0.0.1:${port} (reload auto activé)`);
+      console.log(`[Clinixos] LIVE preview — http://127.0.0.1:${port} (reload auto activé)`);
     });
   }
 
@@ -147,16 +147,16 @@ function startSocketServer(db, port = 3789, userDataPath = null) {
   const tryListen = () => {
     httpServer.listen(port, '0.0.0.0', () => {
       const ip = getLocalIP();
-      console.log(`[SahaMed] Serveur réseau démarré — http://${ip}:${port}`);
+      console.log(`[Clinixos] Serveur réseau démarré — http://${ip}:${port}`);
     });
   };
   httpServer.on('error', (err) => {
     if (err.code === 'EADDRINUSE' && listenAttempts < 5) {
       listenAttempts += 1;
-      console.warn(`[SahaMed] Port ${port} occupé, nouvelle tentative dans 1s (${listenAttempts}/5)...`);
+      console.warn(`[Clinixos] Port ${port} occupé, nouvelle tentative dans 1s (${listenAttempts}/5)...`);
       setTimeout(tryListen, 1000);
     } else {
-      console.error(`[SahaMed] Impossible de démarrer le serveur réseau sur le port ${port} :`, err.message);
+      console.error(`[Clinixos] Impossible de démarrer le serveur réseau sur le port ${port} :`, err.message);
     }
   });
   tryListen();
@@ -189,7 +189,7 @@ const LIVE_SNIPPET = `
       var ae = document.activeElement;
       if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
       if (document.querySelector('[role="dialog"], .modal, [aria-modal="true"]')) return;
-      console.log('[SahaMed LIVE] reload —', reason);
+      console.log('[Clinixos LIVE] reload —', reason);
       location.reload();
     }, 280);
   }
@@ -212,7 +212,7 @@ const LIVE_SNIPPET = `
 function serveStatic(req, res, url) {
   if (!fs.existsSync(DIST_DIR)) {
     res.writeHead(503, { 'Content-Type': 'text/html; charset=utf-8' });
-    res.end('<h1>Application non construite</h1><p>Lancez <code>npm run build</code> sur le PC principal puis redémarrez SahaMed.</p>');
+    res.end('<h1>Application non construite</h1><p>Lancez <code>npm run build</code> sur le PC principal puis redémarrez Clinixos.</p>');
     return;
   }
 

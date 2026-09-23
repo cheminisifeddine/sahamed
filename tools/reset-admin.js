@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Reset SahaMed admin password (and optionally all users).
+ * Reset Clinixos admin password (and optionally all users).
  * Usage:
  *   node tools/reset-admin.js /path/to/sahamed.db
  *   node tools/reset-admin.js /path/to/sahamed.db NewPass123

@@ -18,7 +18,7 @@ function logError(message, error) {
 
 function showFatal(message, error) {
   logError(message, error);
-  dialog.showErrorBox('SahaMed - Erreur', `${message}\n\n${error && error.message ? error.message : error || ''}\n\nUn journal sahamed-error.log a ete cree dans le dossier utilisateur SahaMed.`);
+  dialog.showErrorBox('Clinixos - Erreur', `${message}\n\n${error && error.message ? error.message : error || ''}\n\nUn journal sahamed-error.log a ete cree dans le dossier utilisateur Clinixos.`);
 }
 
 /* ═══════════════════════════ Poste principal (Médecin) ═══════════════════════════ */
@@ -95,7 +95,7 @@ async function createApp() {
       });
     }
   } catch (error) {
-    showFatal("SahaMed n'a pas pu demarrer.", error);
+    showFatal("Clinixos n'a pas pu demarrer.", error);
     app.quit();
   }
 }
@@ -111,7 +111,7 @@ function createMainWindow(isDev) {
     height: 920,
     minWidth: 1024,
     minHeight: 680,
-    title: 'SahaMed',
+    title: 'Clinixos',
     backgroundColor: '#f8fafc',
     icon: appIcon(),
     show: false,
@@ -131,7 +131,7 @@ function createMainWindow(isDev) {
     mainWindow.loadURL('http://127.0.0.1:5173');
   } else {
     mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html')).catch((error) => {
-      showFatal("Impossible de charger l'interface SahaMed.", error);
+      showFatal("Impossible de charger l'interface Clinixos.", error);
     });
   }
 
@@ -142,7 +142,7 @@ function createMainWindow(isDev) {
     showFatal(`Erreur preload : ${preloadPath}`, error);
   });
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
-    showFatal('Le processus renderer SahaMed a quitte de maniere inattendue.', new Error(JSON.stringify(details)));
+    showFatal('Le processus renderer Clinixos a quitte de maniere inattendue.', new Error(JSON.stringify(details)));
   });
   mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
     if (level >= 2) logError(`Console renderer ${sourceId}:${line}`, new Error(message));
@@ -162,7 +162,7 @@ function createClientWindow(serverIP) {
     height: 920,
     minWidth: 1024,
     minHeight: 680,
-    title: 'SahaMed — Poste secretaire',
+    title: 'Clinixos — Poste secretaire',
     backgroundColor: '#f8fafc',
     icon: appIcon(),
     show: false,
@@ -224,7 +224,7 @@ function createSetupWindow() {
     width: 760,
     height: 560,
     resizable: false,
-    title: 'Configuration SahaMed',
+    title: 'Configuration Clinixos',
     backgroundColor: '#f8fafc',
     icon: appIcon(),
     show: false,
@@ -260,7 +260,7 @@ function registerSetupHandlers() {
       if (!res.ok) return { ok: false, error: `Réponse HTTP ${res.status}` };
       const json = await res.json();
       if (json && json.ok) return { ok: true };
-      return { ok: false, error: 'Adresse trouvée mais réponse inattendue (SahaMed est-il bien lancé ?)' };
+      return { ok: false, error: 'Adresse trouvée mais réponse inattendue (Clinixos est-il bien lancé ?)' };
     } catch (error) {
       return { ok: false, error: 'Aucune réponse à cette adresse (vérifiez le réseau et le pare-feu).' };
     }

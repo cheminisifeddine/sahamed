@@ -1,6 +1,6 @@
 'use strict';
 /**
- * SahaMed — live preview localhost (sans Electron GUI).
+ * Clinixos — live preview localhost (sans Electron GUI).
  *
  *   npm run preview
  *   → http://127.0.0.1:3789
@@ -74,7 +74,7 @@ if (!process.argv.includes('--worker')) {
     setInterval(tick, 700).unref();
   };
 
-  console.log('[SahaMed preview] démarrage…');
+  console.log('[Clinixos preview] démarrage…');
   startWorker();
   watchBackend();
 
@@ -88,7 +88,7 @@ if (!process.argv.includes('--worker')) {
         (process.platform === 'win32'
           ? process.env.APPDATA || path.join(require('os').homedir(), 'AppData', 'Roaming')
           : path.join(require('os').homedir(), '.config')),
-      'SahaMed'
+      'Clinixos'
     );
     fs.mkdirSync(userData, { recursive: true });
 
@@ -148,8 +148,8 @@ if (!process.argv.includes('--worker')) {
       setInterval(() => bump('poll'), 1500).unref();
     }
 
-    console.log('[SahaMed preview] ouvrez http://127.0.0.1:3789');
-    console.log('[SahaMed preview] modifiez dist/** → auto-reload ; ajoutez/supprimez des données → auto-refresh');
+    console.log('[Clinixos preview] ouvrez http://127.0.0.1:3789');
+    console.log('[Clinixos preview] modifiez dist/** → auto-reload ; ajoutez/supprimez des données → auto-refresh');
 
     const shutdown = () => {
       try { server.close(); } catch {}

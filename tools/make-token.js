@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Print SahaMed activation token for THIS machine (from recovered guard keys). */
+/** Print Clinixos activation token for THIS machine (from recovered guard keys). */
 'use strict';
 const crypto = require('node:crypto');
 const os = require('node:os');

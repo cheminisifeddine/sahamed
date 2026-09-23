@@ -15,8 +15,28 @@ const today = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
+function migrateLegacyBrandFolder(userDataPath) {
+  try {
+    const dbPath = path.join(userDataPath, 'sahamed.db');
+    if (fs.existsSync(dbPath)) return;
+    const parent = path.dirname(userDataPath);
+    const legacy = path.join(parent, 'SahaMed');
+    if (path.resolve(legacy) === path.resolve(userDataPath)) return;
+    if (!fs.existsSync(path.join(legacy, 'sahamed.db'))) return;
+    fs.mkdirSync(userDataPath, { recursive: true });
+    for (const f of fs.readdirSync(legacy)) {
+      const dst = path.join(userDataPath, f);
+      if (!fs.existsSync(dst)) fs.copyFileSync(path.join(legacy, f), dst);
+    }
+    console.log('[Clinixos] Données migrées depuis', legacy);
+  } catch (e) {
+    console.warn('[Clinixos] Migration ancien dossier ignorée :', e.message);
+  }
+}
+
 async function initDatabase(userDataPath) {
   fs.mkdirSync(userDataPath, { recursive: true });
+  migrateLegacyBrandFolder(userDataPath);
   const dbPath = path.join(userDataPath, 'sahamed.db');
   const wasmDir = path.dirname(require.resolve('sql.js/dist/sql-wasm.wasm'));
   const SQL = await initSqlJs({ locateFile: (file) => path.join(wasmDir, file) });
@@ -57,10 +77,10 @@ function reparerReferencesUtilisateurs(SQL, db, dbPath) {
     const octets = Buffer.from(db.export());
     db.close();
     fs.writeFileSync(dbPath, octets);
-    console.log(`[SahaMed] Schema repare : ${tablesCassees} table(s) pointaient vers une table utilisateurs disparue.`);
+    console.log(`[Clinixos] Schema repare : ${tablesCassees} table(s) pointaient vers une table utilisateurs disparue.`);
     return new SQL.Database(octets);
   } catch (e) {
-    console.warn('[SahaMed] Reparation du schema ignoree :', e.message);
+    console.warn('[Clinixos] Reparation du schema ignoree :', e.message);
     return db;
   }
 }
@@ -218,10 +238,10 @@ function nettoyerMentionsMigration(store) {
     store.db.run("UPDATE patients SET notes = trim(replace(notes, '(migration)', '')) WHERE notes LIKE '%(migration)%'");
     store.db.run("UPDATE documents SET contenu = trim(replace(contenu, '(migration)', '')) WHERE contenu LIKE '%(migration)%'");
     store.db.run('COMMIT');
-    console.log('[SahaMed] Mentions « (migration) » supprimees des donnees reprises.');
+    console.log('[Clinixos] Mentions « (migration) » supprimees des donnees reprises.');
   } catch (e) {
     try { store.db.run('ROLLBACK'); } catch {}
-    console.warn('[SahaMed] Nettoyage des mentions de migration ignore :', e.message);
+    console.warn('[Clinixos] Nettoyage des mentions de migration ignore :', e.message);
   }
 }
 
@@ -365,10 +385,10 @@ function corrigerDatesConsultationsAberrantes(store) {
 
     if (corrigees || aVider.length || retablies) {
       store.save();
-      console.log(`[SahaMed] Dates reprises : ${corrigees} corrigee(s), ${aVider.length} videe(s), ${retablies} retablie(s) depuis le registre.`);
+      console.log(`[Clinixos] Dates reprises : ${corrigees} corrigee(s), ${aVider.length} videe(s), ${retablies} retablie(s) depuis le registre.`);
     }
   } catch (e) {
-    console.warn('[SahaMed] Correction des dates aberrantes ignoree :', e.message);
+    console.warn('[Clinixos] Correction des dates aberrantes ignoree :', e.message);
   }
 }
 
@@ -378,8 +398,9 @@ function seed(store) {
     [
       ['cabinet_nom', 'Cabinet Médical'], ['cabinet_adresse', ''], ['cabinet_telephone', ''], ['cabinet_medecin', 'Administrateur'],
       ['cabinet_specialite', 'Médecine Générale'], ['duree_rdv_defaut', '15'], ['heure_debut', '08:00'], ['heure_fin', '17:00'],
-      ['mode_reseau', 'serveur'], ['ip_serveur', ''], ['port_socket', '3001'], ['app_nom', 'SahaMed'], ['verrouillage_minutes', '60']
+      ['mode_reseau', 'serveur'], ['ip_serveur', ''], ['port_socket', '3001'], ['app_nom', 'Clinixos'], ['verrouillage_minutes', '60']
     ].forEach((row) => store.db.run('INSERT OR IGNORE INTO parametres (cle, valeur) VALUES (?, ?)', row));
+    try { store.db.run("UPDATE parametres SET valeur = 'Clinixos' WHERE cle = 'app_nom' AND valeur = 'SahaMed'"); } catch {}
 
     [
       ['CS', 'Consultation générale', 1000, 'consultation'],
@@ -553,10 +574,10 @@ function numeroterOrdonnancesExistantes(store) {
     }
     store.db.run('COMMIT');
     store.save();
-    console.log(`[SahaMed] ${manquantes.length} ordonnance(s) numerotee(s).`);
+    console.log(`[Clinixos] ${manquantes.length} ordonnance(s) numerotee(s).`);
   } catch (e) {
     try { store.db.run('ROLLBACK'); } catch {}
-    console.warn('[SahaMed] Numerotation des ordonnances ignoree :', e.message);
+    console.warn('[Clinixos] Numerotation des ordonnances ignoree :', e.message);
   }
 }
 
