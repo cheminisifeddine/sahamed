@@ -1,34 +1,76 @@
 <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Reprise legacy — SahaMed DZ</title><link rel="stylesheet" href="/dz/dz.css"></head><body>
-<header class="top"><a href="/dz/">← Modules</a><h1>📥 Reprise MedWin / Access (1 clic)</h1><span id="lic"></span></header>
-<main>
-  <div class="panel"><h2>1. Source + données (JSON exporté du .mdb / .dbf / .csv)</h2>
-    <div class="row"><div><label>Logiciel source</label><select id="src"><option>MedWin</option><option>CabChifa</option><option>EasyDoc</option><option>Access</option><option>Excel</option></select></div></div>
-    <label>Lignes JSON : [{"nom":"…","prenom":"…","date_naissance":"présumé en 1954 | 01/02/1970","telephone":"0661…"}]</label>
-    <textarea id="rows" rows="8" placeholder='[{"nom":"HADDAD","prenom":"Yacine","date_naissance":"présumé en 1954","telephone":"0661 22 33 44"}]'></textarea>
-    <button id="b-dry">🔍 Simulation (dry-run)</button>
-    <button id="b-go" class="danger">⚡ Migrer maintenant (atomique)</button>
+<title>Reprise legacy — SahaMed</title><link rel="stylesheet" href="/dz/dz.css"></head><body>
+<main class="page">
+  <div class="dz-page-head">
+    <div>
+      <div class="page-title">Reprise legacy</div>
+      <div class="page-subtitle">MedWin / Access / Excel → SahaMed en un clic — simulation puis migration atomique</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>1 · Source + données</h2>
+    <div class="row">
+      <div>
+        <label for="src">Logiciel source</label>
+        <select id="src">
+          <option>MedWin</option><option>CabChifa</option><option>EasyDoc</option>
+          <option>Access</option><option>Excel</option>
+        </select>
+      </div>
+    </div>
+    <label for="rows">Lignes JSON exportées</label>
+    <textarea id="rows" rows="8" style="font-family:var(--font-mono);font-size:13px" placeholder='[{"nom":"HADDAD","prenom":"Yacine","date_naissance":"présumé en 1954","telephone":"0661 22 33 44"}]'></textarea>
+    <p class="dz-hint">Formats acceptés : <code>.mdb</code> → JSON (MDBTools), <code>.dbf</code>, <code>.csv</code> (Windows-1256/1252 → UTF-8).</p>
+    <div class="btn-row">
+      <button id="b-dry" class="btn btn-primary">🔍 Simulation (dry-run)</button>
+      <button id="b-go" class="btn btn-danger">⚡ Migrer maintenant</button>
+    </div>
     <div id="out"></div>
   </div>
-  <div class="panel"><h2>Normalisations automatiques</h2>
-    <p>📞 Mobiles Mobilis/Djezzy/Ooredoo → <b>+213XXXXXXXXX</b> • 🎂 « Présumé en AAAA » → <b>AAAA-07-01 + est_presume</b> • 🔤 Windows-1256/1252 → <b>UTF-8</b> • 🧪 Lignes douteuses → <b>quarantaine</b> (jamais perdues).</p>
+
+  <div class="panel">
+    <h2>Normalisations automatiques</h2>
+    <div class="row">
+      <div class="dz-stat"><div class="k">Téléphones</div><div class="v" style="font-size:1rem">Mobilis / Djezzy / Ooredoo → +213…</div></div>
+      <div class="dz-stat"><div class="k">Dates</div><div class="v" style="font-size:1rem">« Présumé en 1954 » → 1954-07-01</div></div>
+      <div class="dz-stat"><div class="k">Encodage</div><div class="v" style="font-size:1rem">Windows-1256 / 1252 → UTF-8</div></div>
+      <div class="dz-stat"><div class="k">Sécurité</div><div class="v" style="font-size:1rem">Lignes douteuses → quarantaine</div></div>
+    </div>
+    <p class="dz-hint">Aucune ligne n'est perdue : le checksum SHA-256 de chaque lot est archivé dans la table <code>migration_quarantaine</code>.</p>
   </div>
+
+  <footer class="dz-foot">Migration transactionnelle (BEGIN/COMMIT) — en cas d'échec, la base reste intacte.</footer>
 </main>
 <script src="/dz/dz.js"></script>
 <script>(async function () {
-  DZ.licenseChip(document.getElementById('lic'));
+  if (window.self === window.top) DZ.mountHeader('Reprise legacy');
+
   async function run(dry) {
     let rows;
     try { rows = JSON.parse(document.getElementById('rows').value); }
-    catch { DZ.toast('JSON invalide', false); return; }
+    catch { DZ.toast('JSON invalide — vérifiez la syntaxe', false); return; }
+    if (!Array.isArray(rows) || !rows.length) {
+      DZ.toast('Tableau JSON vide', false);
+      return;
+    }
     try {
-      const r = await DZ.rpc('dz:ingest', [{ source: document.getElementById('src').value, rows, dryRun: dry }]);
+      const r = await DZ.rpc('dz:ingest', [{
+        source: document.getElementById('src').value, rows, dryRun: dry
+      }]);
       document.getElementById('out').innerHTML =
-        `<p><b>${r.total}</b> lignes : ✅ ${r.patients} patients ${dry ? '(simulation)' : 'importés'} • 🟡 ${r.quarantaine} en quarantaine ${r.checksum ? '• 🔐 ' + r.checksum : ''}</p>` +
+        `<div class="alert ${r.quarantaine > 0 ? 'MAJEURE' : 'OK'}">
+          <b>${r.total}</b> lignes : ✅ ${r.patients} patients ${dry ? '(simulation)' : 'importés'}
+          · 🟡 ${r.quarantaine} en quarantaine
+          ${r.checksum ? '· 🔐 <code>' + DZ.esc(r.checksum.slice(0, 16)) + '…</code>' : ''}
+        </div>` +
         (r.exemple ? `<pre>${DZ.esc(JSON.stringify(r.exemple, null, 2))}</pre>` : '');
       DZ.toast(dry ? 'Simulation terminée' : 'Migration validée', true);
-    } catch(e) { DZ.toast(e.message, false); }
+    } catch (e) { DZ.toast(e.message, false); }
   }
   document.getElementById('b-dry').onclick = () => run(true);
-  document.getElementById('b-go').onclick = () => { if (confirm('Importer définitivement ? (transaction atomique)')) run(false); };
-})();</script></body></html>
+  document.getElementById('b-go').onclick = () => {
+    if (confirm('Importer définitivement ? (transaction atomique — rien ne sera perdu en cas d\'échec)')) run(false);
+  };
+})();</script>
+</body></html>

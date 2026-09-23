@@ -1,26 +1,60 @@
 <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sauvegarde chiffrée — SahaMed DZ</title><link rel="stylesheet" href="/dz/dz.css"></head><body>
-<header class="top"><a href="/dz/">← Modules</a><h1>🔐 Sauvegarde chiffrée (délestages)</h1><span id="lic"></span></header>
-<main>
-  <div class="panel"><h2>Snapshot chiffré immédiat (AES-256-GCM → disque + clé USB si branchée)</h2>
-    <label>Phrase secrète (≥ 8 caractères — gardez-la hors du PC)</label>
-    <input id="pp" type="password" placeholder="••••••••">
-    <button id="b-go">💾 Sauvegarder maintenant</button><div id="out"></div>
+<title>Sauvegarde — SahaMed</title><link rel="stylesheet" href="/dz/dz.css"></head><body>
+<main class="page">
+  <div class="dz-page-head">
+    <div>
+      <div class="page-title">Sauvegarde chiffrée</div>
+      <div class="page-subtitle">AES-256-GCM · disque + clé USB · R2 Cloudflare — conçu pour les délestages</div>
+    </div>
   </div>
-  <div class="panel"><h2>Stratégie automatique</h2>
-    <p>🌐 <b>R2 Cloudflare</b> : snapshot chiffré toutes les 60 min (secours chiffré, jamais de données en clair).<br>
-    💽 <b>USB</b> : dès qu'une clé est branchée, copie redondante (rotation 30 jours).<br>
-    ⚡ <b>WAL + fsync</b> : chaque écriture est synchronisée disque avant réponse.</p>
+
+  <div class="panel">
+    <h2>Snapshot immédiat</h2>
+    <label for="pp">Phrase secrète (≥ 8 caractères)</label>
+    <input id="pp" type="password" placeholder="••••••••" autocomplete="new-password">
+    <p class="dz-hint">Gardez la phrase hors du PC (carnet papier). Sans elle, le snapshot est illisible.</p>
+    <div class="btn-row">
+      <button id="b-go" class="btn btn-primary">💾 Sauvegarder maintenant</button>
+    </div>
+    <div id="out"></div>
   </div>
+
+  <div class="panel">
+    <h2>Stratégie automatique</h2>
+    <div class="row">
+      <div class="dz-stat">
+        <div class="k">☁️ R2 Cloudflare</div>
+        <div class="v" style="font-size:1rem">Snapshot chiffré / 60 min</div>
+      </div>
+      <div class="dz-stat">
+        <div class="k">💽 USB</div>
+        <div class="v" style="font-size:1rem">Copie dès insertion · rotation 30 j</div>
+      </div>
+      <div class="dz-stat">
+        <div class="k">⚡ WAL + fsync</div>
+        <div class="v" style="font-size:1rem">Chaque écriture sync disque</div>
+      </div>
+    </div>
+    <p class="dz-hint">Jamais de données en clair hors machine. R2 = secours chiffré ; le chiffrement se fait avant l'upload.</p>
+  </div>
+
+  <footer class="dz-foot">Restauration : Paramètres → Sauvegarde, ou <code>sahamed-restore</code> hors-ligne.</footer>
 </main>
 <script src="/dz/dz.js"></script>
 <script>(async function () {
-  DZ.licenseChip(document.getElementById('lic'));
+  if (window.self === window.top) DZ.mountHeader('Sauvegarde chiffrée');
+
   document.getElementById('b-go').onclick = async () => {
+    const pp = document.getElementById('pp').value;
+    if (pp.length < 8) { DZ.toast('Phrase secrète ≥ 8 caractères', false); return; }
     try {
-      const r = await DZ.rpc('dz:backup.chiffre', [{ passphrase: document.getElementById('pp').value }]);
-      document.getElementById('out').innerHTML = `<p>✅ <b>${DZ.esc(r.fichier)}</b> (${Math.round(r.taille_octets / 1024)} Ko) →</p><pre>${DZ.esc(r.cibles.join('\n'))}</pre>`;
+      const r = await DZ.rpc('dz:backup.chiffre', [{ passphrase: pp }]);
+      document.getElementById('out').innerHTML =
+        `<div class="alert OK">✅ <b>${DZ.esc(r.fichier)}</b> (${Math.round(r.taille_octets / 1024)} Ko)
+          <pre style="margin:8px 0 0">${DZ.esc((r.cibles || []).join('\n'))}</pre></div>`;
       document.getElementById('pp').value = '';
-    } catch(e) { DZ.toast(e.message, false); }
+      DZ.toast('Snapshot créé', true);
+    } catch (e) { DZ.toast(e.message, false); }
   };
-})();</script></body></html>
+})();</script>
+</body></html>

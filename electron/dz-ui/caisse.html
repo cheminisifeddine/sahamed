@@ -1,69 +1,132 @@
 <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Caisse à l'aveugle — SahaMed DZ</title><link rel="stylesheet" href="/dz/dz.css"></head><body>
-<header class="top"><a href="/dz/">← Modules</a><h1>💰 Caisse à l'aveugle <span dir="rtl">الصندوق</span></h1><span id="lic"></span></header>
-<main>
-  <div class="panel" id="p-blind"><h2>État du jour (sans montants — écran secrétaire)</h2><div id="statut">…</div></div>
-  <div class="panel" id="p-doctor" style="display:none"><h2>Vue médecin — montants & rapports</h2>
-    <div id="attendu"></div>
-    <div class="row"><div><label>Mois du rapport (AAAA-MM)</label><input id="rap-mois" placeholder="2026-09"></div></div>
-    <button id="b-rapport">Afficher les clôtures</button><div id="rapport"></div>
-    <h2 style="margin-top:14px">Alertes d'écart (temps réel)</h2><div id="alertes"></div>
-  </div>
-  <div class="panel"><h2>Clôture de shift — comptage physique des billets <span dir="rtl">عد الأوراق النقدية</span></h2>
-    <div class="row">
-      <div><label>Billets 2000</label><input id="b2000" type="number" min="0" value="0"></div>
-      <div><label>Billets 1000</label><input id="b1000" type="number" min="0" value="0"></div>
-      <div><label>Billets 500</label><input id="b500" type="number" min="0" value="0"></div>
-      <div><label>Billets 200</label><input id="b200" type="number" min="0" value="0"></div>
-      <div><label>Billets 100</label><input id="b100" type="number" min="0" value="0"></div>
-      <div><label>Pièces (DZD)</label><input id="pieces" type="number" min="0" value="0"></div>
+<title>Caisse DZ — SahaMed</title><link rel="stylesheet" href="/dz/dz.css"></head><body>
+<main class="page">
+  <div class="dz-page-head">
+    <div>
+      <div class="page-title">Caisse DZ — clôture par billets</div>
+      <div class="page-subtitle">Comptage physique des dinars, écarts temps réel — <span dir="rtl">عد الأوراق النقدية</span></div>
     </div>
-    <div><label>Votre nom</label><input id="nom" placeholder="Nom de la secrétaire"></div>
-    <div><b>Total compté : <span id="total">0</span> DZD</b></div>
-    <button id="b-cloturer">🔒 Verrouiller la clôture</button>
+    <span class="badge slate" id="statut">…</span>
   </div>
+
+  <div class="panel" id="p-doctor" style="display:none">
+    <h2>Vue médecin — montants & rapports</h2>
+    <div class="row">
+      <div class="dz-stat"><div class="k">Attendu ce jour</div><div class="v" id="attendu">—</div></div>
+    </div>
+    <div class="row">
+      <div><label for="rap-mois">Mois du rapport (AAAA-MM)</label><input id="rap-mois" placeholder="2026-09"></div>
+      <div style="display:flex;align-items:flex-end"><button id="b-rapport" class="btn btn-primary" style="margin-top:0;width:100%">📊 Clôtures du mois</button></div>
+    </div>
+    <div id="rapport"></div>
+    <h2 style="margin-top:18px">Alertes d'écart <span class="badge red" id="n-alertes" style="display:none">0</span></h2>
+    <div id="alertes"><p class="dz-hint">Aucune alerte aujourd'hui.</p></div>
+  </div>
+
+  <div class="panel">
+    <h2>Clôture de shift — comptage physique</h2>
+    <div class="row">
+      <div><label for="b2000">Billets 2000 DZD</label><input id="b2000" type="number" min="0" value="0"></div>
+      <div><label for="b1000">Billets 1000 DZD</label><input id="b1000" type="number" min="0" value="0"></div>
+      <div><label for="b500">Billets 500 DZD</label><input id="b500" type="number" min="0" value="0"></div>
+      <div><label for="b200">Billets 200 DZD</label><input id="b200" type="number" min="0" value="0"></div>
+      <div><label for="b100">Billets 100 DZD</label><input id="b100" type="number" min="0" value="0"></div>
+      <div><label for="pieces">Pièces (DZD)</label><input id="pieces" type="number" min="0" value="0"></div>
+    </div>
+    <div><label for="nom">Votre nom (secrétaire)</label><input id="nom" placeholder="Nom de la secrétaire" autocomplete="off"></div>
+
+    <div class="dz-stat" style="margin-top:16px">
+      <div class="k">Total compté</div>
+      <div class="v" id="total" style="font-size:1.75rem">0 DZD</div>
+    </div>
+
+    <div class="btn-row">
+      <button id="b-cloturer" class="btn btn-primary">🔒 Verrouiller la clôture</button>
+      <button id="b-reset" class="btn">↺ Remettre à zéro</button>
+    </div>
+  </div>
+
+  <footer class="dz-foot">Écran secrétaire : montants masqués · seul le médecin voit les rapports · alertes push en temps réel</footer>
 </main>
 <script src="/socket.io/socket.io.js"></script><script src="/dz/dz.js"></script>
 <script>(async function () {
-  DZ.licenseChip(document.getElementById('lic'));
-  const ids = ['b2000','b1000','b500','b200','b100'];
-  const dens = [2000,1000,500,200,100];
+  if (window.self === window.top) DZ.mountHeader('Caisse DZ', { ar: 'الصندوق' });
+
+  const ids = ['b2000', 'b1000', 'b500', 'b200', 'b100'];
+  const dens = [2000, 1000, 500, 200, 100];
+
   function total() {
-    let t = ids.reduce((a,id,i) => a + (+document.getElementById(id).value || 0) * dens[i], 0) + (+document.getElementById('pieces').value || 0);
-    document.getElementById('total').textContent = t.toLocaleString('fr-DZ');
+    let t = ids.reduce((a, id, i) => a + (+document.getElementById(id).value || 0) * dens[i], 0)
+      + (+document.getElementById('pieces').value || 0);
+    document.getElementById('total').textContent = t.toLocaleString('fr-DZ') + ' DZD';
   }
-  [...ids,'pieces'].forEach(id => document.getElementById(id).addEventListener('input', total));
+  [...ids, 'pieces'].forEach(id => document.getElementById(id).addEventListener('input', total));
+
+  document.getElementById('b-reset').onclick = () => {
+    [...ids, 'pieces'].forEach(id => { document.getElementById(id).value = 0; });
+    total();
+  };
+
   try {
     const st = await DZ.rpc('dz:caisse.statut', []);
-    document.getElementById('statut').innerHTML = st.cloture
-      ? '<span class="badge green">🔒 Clôturé et verrouillé</span>' : '<span class="badge amber">🟡 Shift ouvert — en cours</span>';
-  } catch(e) { document.getElementById('statut').textContent = e.message; }
+    const el = document.getElementById('statut');
+    if (st.cloture) {
+      el.className = 'badge green';
+      el.textContent = '🔒 Clôturé et verrouillé';
+    } else {
+      el.className = 'badge amber';
+      el.textContent = '🟡 Shift ouvert';
+    }
+  } catch (e) {
+    document.getElementById('statut').className = 'badge red';
+    document.getElementById('statut').textContent = 'Erreur';
+  }
+
   try {
     const at = await DZ.rpc('dz:caisse.attendu', []);
     document.getElementById('p-doctor').style.display = 'block';
-    document.getElementById('attendu').innerHTML = `Attendu ce jour : <b>${DZ.money(at.total_attendu)}</b>`;
-  } catch(e) { /* secrétaire : pas de montants, c'est normal */ }
+    document.getElementById('attendu').textContent = DZ.money(at.total_attendu);
+  } catch (e) { /* secrétaire : pas de montants — normal (aveugle) */ }
+
   document.getElementById('b-cloturer').onclick = async () => {
+    const nom = document.getElementById('nom').value.trim();
+    if (!nom) { DZ.toast('Entrez votre nom', false); return; }
     const billets = { pieces: +document.getElementById('pieces').value || 0 };
-    ids.forEach((id,i) => billets[dens[i]] = +document.getElementById(id).value || 0);
+    ids.forEach((id, i) => { billets[dens[i]] = +document.getElementById(id).value || 0; });
     try {
-      const r = await DZ.rpc('dz:caisse.cloturer', [{ billets, secretaire_nom: document.getElementById('nom').value }]);
+      const r = await DZ.rpc('dz:caisse.cloturer', [{ billets, secretaire_nom: nom }]);
       DZ.toast(r.message || `Écart : ${r.ecart} DZD (${r.statut})`, true);
-      location.reload();
-    } catch(e) { DZ.toast(e.message, false); }
+      setTimeout(() => location.reload(), 900);
+    } catch (e) { DZ.toast(e.message, false); }
   };
+
   document.getElementById('b-rapport').onclick = async () => {
     try {
       const m = document.getElementById('rap-mois').value;
       const rows = await DZ.rpc('dz:caisse.rapport', [{ from: m ? m + '-01' : null, to: m ? m + '-31' : null }]);
-      document.getElementById('rapport').innerHTML = '<table><tr><th>Jour</th><th>Déclaré</th><th>Attendu</th><th>Écart</th><th>Statut</th></tr>' +
-        rows.map(r => `<tr><td>${r.jour}</td><td>${DZ.money(r.total_declare_dzd)}</td><td>${DZ.money(r.total_attendu_dzd)}</td><td><b>${r.ecart_dzd}</b></td><td>${r.statut}</td></tr>`).join('') + '</table>';
-    } catch(e) { DZ.toast(e.message, false); }
+      if (!rows.length) {
+        document.getElementById('rapport').innerHTML = '<p class="dz-hint">Aucune clôture pour cette période.</p>';
+        return;
+      }
+      document.getElementById('rapport').innerHTML =
+        '<table class="table-head"><thead><tr><th>Jour</th><th>Déclaré</th><th>Attendu</th><th>Écart</th><th>Statut</th></tr></thead><tbody>' +
+        rows.map(r => `<tr><td>${r.jour}</td><td>${DZ.money(r.total_declare_dzd)}</td><td>${DZ.money(r.total_attendu_dzd)}</td>` +
+          `<td><b>${r.ecart_dzd}</b></td><td>${r.statut === 'OK' ? '<span class="badge green">OK</span>' : '<span class="badge red">' + DZ.esc(r.statut) + '</span>'}</td></tr>`).join('') +
+        '</tbody></table>';
+    } catch (e) { DZ.toast(e.message, false); }
   };
-  const s = io({ transports: ['websocket','polling'] });
-  s.on('caisse:alerte', d => {
-    document.getElementById('alertes').innerHTML =
-      `<div class="alert ${d.ecart !== 0 ? 'CRITIQUE' : 'MODEREE'}">🚨 Clôture ${d.jour} — déclaré ${DZ.money(d.total_declare)}, attendu ${DZ.money(d.total_attendu)}, <b>écart ${d.ecart} (${d.statut})</b></div>`
-      + document.getElementById('alertes').innerHTML;
-  });
-})();</script></body></html>
+
+  try {
+    const s = io({ transports: ['websocket', 'polling'] });
+    s.on('caisse:alerte', d => {
+      const box = document.getElementById('alertes');
+      const n = document.getElementById('n-alertes');
+      n.style.display = '';
+      n.textContent = String((+n.textContent || 0) + 1);
+      if (box.querySelector('.dz-hint')) box.innerHTML = '';
+      box.insertAdjacentHTML('afterbegin',
+        `<div class="alert ${d.ecart !== 0 ? 'CRITIQUE' : 'MODEREE'}">🚨 Clôture ${d.jour} — déclaré ${DZ.money(d.total_declare)}, attendu ${DZ.money(d.total_attendu)}, <b>écart ${d.ecart} (${DZ.esc(d.statut)})</b></div>`);
+    });
+  } catch (e) { /* ignore */ }
+})();</script>
+</body></html>

@@ -1,78 +1,193 @@
 <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Documents médico-légaux — SahaMed DZ</title><link rel="stylesheet" href="/dz/dz.css"></head><body>
-<header class="top"><a href="/dz/">← Modules</a><h1>📄 Médico-légal (CNAS • 19-379 • CBV • Mutuelles)</h1><span id="lic"></span></header>
-<main>
-  <div class="panel noprint"><div class="tabs">
-    <button data-tab="arret">🛌 Arrêt de travail</button><button data-tab="psy">💊 Psychotrope</button><button data-tab="cbv">⚖️ CBV / ITT</button><button data-tab="mut">🏢 Mutuelle</button>
-  </div></div>
-  <div class="panel" id="tab-arret"><h2>Arrêt de travail (tri-volets CNAS/CASNOS — 48h, 15j max initial)</h2>
-    <div class="row"><div><label>ID patient</label><input id="a-pat" type="number"></div>
-    <div><label>Type</label><select id="a-type"><option value="initial">Initial</option><option value="prolongation">Prolongation</option><option value="reprise">Reprise</option></select></div>
-    <div><label>Début</label><input id="a-debut" type="date"></div><div><label>Durée (jours)</label><input id="a-duree" type="number" value="5"></div></div>
-    <label>Diagnostic (volet 1+2 uniquement — masqué volet 3 employeur)</label><input id="a-diag">
-    <button id="b-arret">Générer</button><div id="r-arret"></div>
+<title>Médico-légal — SahaMed</title><link rel="stylesheet" href="/dz/dz.css"></head><body>
+<main class="page">
+  <div class="dz-page-head">
+    <div>
+      <div class="page-title">Documents médico-légaux</div>
+      <div class="page-subtitle">Arrêts CNAS · psychotropes 19-379 · certificats CBV · tiers-payant mutuelles</div>
+    </div>
   </div>
-  <div class="panel" id="tab-psy" style="display:none"><h2>Psychotrope — Décret 19-379 (blanche/jaune/rose, ≤90j, registre 5 ans)</h2>
-    <div class="row"><div><label>ID patient</label><input id="p-pat" type="number"></div>
-    <div><label>Pièce d'identité / passeport *</label><input id="p-piece" placeholder="CIN / passeport N°"></div>
-    <div><label>DCI *</label><input id="p-dci" value="Bromazépam"></div></div>
-    <div class="row"><div><label>Posologie *</label><input id="p-poso" value="6mg matin et soir"></div>
-    <div><label>Durée (jours, ≤90)</label><input id="p-duree" type="number" value="30"></div></div>
-    <button id="b-psy">Inscrire au registre</button><div id="r-psy"></div>
+
+  <div class="panel noprint">
+    <div class="dz-tabs" role="tablist">
+      <button data-tab="arret" class="active" type="button">🛌 Arrêt de travail</button>
+      <button data-tab="psy" type="button">💊 Psychotrope</button>
+      <button data-tab="cbv" type="button">⚖️ CBV / ITT</button>
+      <button data-tab="mut" type="button">🏢 Mutuelle</button>
+    </div>
   </div>
-  <div class="panel" id="tab-cbv" style="display:none"><h2>Certificat CBV — ITT + seuil pénal 15j (art. 264-266)</h2>
-    <div class="row"><div><label>ID patient</label><input id="c-pat" type="number"></div>
-    <div><label>ITT (jours)</label><input id="c-itt" type="number" value="10"></div>
-    <div><label>Date des faits</label><input id="c-date" type="date"></div></div>
-    <label>Lésions (description anatomique objective)</label><textarea id="c-les" rows="3"></textarea>
-    <button id="b-cbv">Établir</button><div id="r-cbv"></div>
+
+  <div class="panel" id="tab-arret">
+    <h2>Arrêt de travail <span class="badge slate">tri-volets CNAS/CASNOS · 48 h · 15 j max initial</span></h2>
+    <div class="row">
+      <div><label for="a-pat">ID patient</label><input id="a-pat" type="number" min="1"></div>
+      <div><label for="a-type">Type</label>
+        <select id="a-type"><option value="initial">Initial</option><option value="prolongation">Prolongation</option><option value="reprise">Reprise</option></select>
+      </div>
+      <div><label for="a-debut">Début</label><input id="a-debut" type="date"></div>
+      <div><label for="a-duree">Durée (jours)</label><input id="a-duree" type="number" min="1" max="15" value="5"></div>
+    </div>
+    <label for="a-diag">Diagnostic — volets 1+2 uniquement (masqué employeur)</label>
+    <input id="a-diag" placeholder="ex : lombalgie aiguë">
+    <div class="btn-row"><button id="b-arret" class="btn btn-primary">Générer l'arrêt</button></div>
+    <div id="r-arret"></div>
   </div>
-  <div class="panel" id="tab-mut" style="display:none"><h2>Tiers-payant — MIP Sonatrach / Sonelgaz</h2>
-    <div class="row"><div><label>ID patient</label><input id="m-pat" type="number"></div>
-    <div><label>Organisme</label><select id="m-org"><option>MIP Sonatrach</option><option>Mutuelle Sonelgaz</option></select></div>
-    <div><label>Acte</label><input id="m-acte" value="CS"></div><div><label>Montant</label><input id="m-mont" type="number" value="2000"></div></div>
-    <button id="b-bon">Bon de prise en charge</button>
-    <div class="row"><div><label>Bordereau du mois (AAAA-MM)</label><input id="m-mois"></div></div>
-    <button id="b-bord" class="ghost">Bordereau récapitulatif</button><div id="r-mut"></div>
+
+  <div class="panel" id="tab-psy" style="display:none">
+    <h2>Psychotrope <span class="badge amber">décret 19-379 · ≤ 90 j · registre 5 ans</span></h2>
+    <div class="row">
+      <div><label for="p-pat">ID patient</label><input id="p-pat" type="number" min="1"></div>
+      <div><label for="p-piece">Pièce d'identité / passeport *</label><input id="p-piece" placeholder="CIN / passeport N°"></div>
+      <div><label for="p-dci">DCI *</label><input id="p-dci" value="Bromazépam"></div>
+    </div>
+    <div class="row">
+      <div><label for="p-poso">Posologie *</label><input id="p-poso" value="6mg matin et soir"></div>
+      <div><label for="p-duree">Durée (jours, ≤ 90)</label><input id="p-duree" type="number" min="1" max="90" value="30"></div>
+    </div>
+    <p class="dz-hint">Ordonnance blanche / jaune / rose · CIP obligatoire · série + scans archivés 5 ans.</p>
+    <div class="btn-row"><button id="b-psy" class="btn btn-primary">Inscrire au registre</button></div>
+    <div id="r-psy"></div>
   </div>
-  <div class="panel noprint"><h2>Impression A5 (Mode A complet / Mode B pré-imprimé)</h2>
-    <div class="row"><div><label>Type</label><select id="pr-kind"><option value="ordonnance">Ordonnance</option><option value="arret">Arrêt</option><option value="psycho">Psychotrope</option><option value="cbv">CBV</option><option value="bon-mutuelle">Bon mutuelle</option></select></div>
-    <div><label>ID document</label><input id="pr-id"></div></div>
-    <button id="b-print">Charger la maquette</button><div id="print-zone"></div>
+
+  <div class="panel" id="tab-cbv" style="display:none">
+    <h2>Certificat CBV <span class="badge slate">ITT + seuil pénal 15 j · art. 264-266</span></h2>
+    <div class="row">
+      <div><label for="c-pat">ID patient</label><input id="c-pat" type="number" min="1"></div>
+      <div><label for="c-itt">ITT (jours)</label><input id="c-itt" type="number" min="1" value="10"></div>
+      <div><label for="c-date">Date des faits</label><input id="c-date" type="date"></div>
+    </div>
+    <label for="c-les">Lésions — description anatomique objective</label>
+    <textarea id="c-les" rows="3" placeholder="ex : contusion de l'avant-bras droit, sans suite"></textarea>
+    <div class="btn-row"><button id="b-cbv" class="btn btn-primary">Établir le certificat</button></div>
+    <div id="r-cbv"></div>
   </div>
+
+  <div class="panel" id="tab-mut" style="display:none">
+    <h2>Tiers-payant <span class="badge teal">MIP Sonatrach / Sonelgaz</span></h2>
+    <div class="row">
+      <div><label for="m-pat">ID patient</label><input id="m-pat" type="number" min="1"></div>
+      <div><label for="m-org">Organisme</label>
+        <select id="m-org"><option>MIP Sonatrach</option><option>Mutuelle Sonelgaz</option></select>
+      </div>
+      <div><label for="m-acte">Acte</label><input id="m-acte" value="CS"></div>
+      <div><label for="m-mont">Montant (DZD)</label><input id="m-mont" type="number" min="0" value="2000"></div>
+    </div>
+    <div class="btn-row">
+      <button id="b-bon" class="btn btn-primary">Bon de prise en charge</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <div><label for="m-mois">Bordereau du mois (AAAA-MM)</label><input id="m-mois" placeholder="2026-09"></div>
+      <div style="display:flex;align-items:flex-end">
+        <button id="b-bord" class="btn" style="margin-top:0;width:100%">📄 Bordereau récapitulatif</button>
+      </div>
+    </div>
+    <div id="r-mut"></div>
+  </div>
+
+  <div class="panel noprint">
+    <h2>Impression A5 <span class="badge slate">Mode A complet · Mode B pré-imprimé</span></h2>
+    <div class="row">
+      <div><label for="pr-kind">Type</label>
+        <select id="pr-kind">
+          <option value="ordonnance">Ordonnance</option><option value="arret">Arrêt</option>
+          <option value="psycho">Psychotrope</option><option value="cbv">CBV</option>
+          <option value="bon-mutuelle">Bon mutuelle</option>
+        </select>
+      </div>
+      <div><label for="pr-id">ID document</label><input id="pr-id"></div>
+    </div>
+    <div class="btn-row"><button id="b-print" class="btn btn-primary">Charger la maquette A5</button></div>
+    <div id="print-zone"></div>
+  </div>
+
+  <footer class="dz-foot">A5 148×210 mm · décalages imprimante configurables · mode A (contenu) / mode B (pré-imprimé)</footer>
 </main>
 <script src="/dz/dz.js"></script>
 <script>(async function () {
-  DZ.licenseChip(document.getElementById('lic'));
+  if (window.self === window.top) DZ.mountHeader('Documents médico-légaux');
+
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => {
-    ['arret','psy','cbv','mut'].forEach(t => document.getElementById('tab-' + t).style.display = t === b.dataset.tab ? 'block' : 'none');
+    document.querySelectorAll('[data-tab]').forEach(x => x.classList.toggle('active', x === b));
+    ['arret', 'psy', 'cbv', 'mut'].forEach(t => {
+      document.getElementById('tab-' + t).style.display = t === b.dataset.tab ? 'block' : 'none';
+    });
   });
   const v = id => document.getElementById(id).value;
+
   document.getElementById('b-arret').onclick = async () => {
-    try { const r = await DZ.rpc('dz:arret.create', [{ patient_id: +v('a-pat'), type: v('a-type'), date_debut: v('a-debut'), duree_jours: +v('a-duree'), diagnostic: v('a-diag') }]);
-      document.getElementById('r-arret').innerHTML = `<p>✅ N° <b>${r.numero}</b> — Volet 3 employeur : diagnostic masqué ✔</p>`; } catch(e) { DZ.toast(e.message, false); } };
+    try {
+      const r = await DZ.rpc('dz:arret.create', [{
+        patient_id: +v('a-pat'), type: v('a-type'),
+        date_debut: v('a-debut'), duree_jours: +v('a-duree'), diagnostic: v('a-diag')
+      }]);
+      document.getElementById('r-arret').innerHTML =
+        `<div class="alert OK">✅ Arrêt <b>${DZ.esc(r.numero)}</b> enregistré — volet 3 employeur : diagnostic masqué ✔</div>`;
+    } catch (e) { DZ.toast(e.message, false); }
+  };
   document.getElementById('b-psy').onclick = async () => {
-    try { const r = await DZ.rpc('dz:psycho.create', [{ patient_id: +v('p-pat') || null, piece_identite: v('p-piece'), dci: v('p-dci'), posologie: v('p-poso'), duree_jours: +v('p-duree') }]);
-      document.getElementById('r-psy').innerHTML = `<p>✅ Série <b>${r.numero_serie}</b></p><p>${r.copies.join(' • ')}</p>`; } catch(e) { DZ.toast(e.message, false); } };
+    try {
+      const r = await DZ.rpc('dz:psycho.create', [{
+        patient_id: +v('p-pat') || null, piece_identite: v('p-piece'),
+        dci: v('p-dci'), posologie: v('p-poso'), duree_jours: +v('p-duree')
+      }]);
+      document.getElementById('r-psy').innerHTML =
+        `<div class="alert OK">✅ Série <b>${DZ.esc(r.numero_serie)}</b> — ${r.copies.map(c => DZ.esc(c)).join(' · ')}</div>`;
+    } catch (e) { DZ.toast(e.message, false); }
+  };
   document.getElementById('b-cbv').onclick = async () => {
-    try { const r = await DZ.rpc('dz:cbv.create', [{ patient_id: +v('c-pat'), date_faits: v('c-date'), lesions: v('c-les'), itt_jours: +v('c-itt') }]);
-      document.getElementById('r-cbv').innerHTML = `<p>✅ ITT ${r.itt_jours} j — <b>${DZ.esc(r.seuil_penal_15j)}</b></p>`; } catch(e) { DZ.toast(e.message, false); } };
+    try {
+      const r = await DZ.rpc('dz:cbv.create', [{
+        patient_id: +v('c-pat'), date_faits: v('c-date'),
+        lesions: v('c-les'), itt_jours: +v('c-itt')
+      }]);
+      const penal = /dépassé|pénal|oui/i.test(r.seuil_penal_15j || '');
+      document.getElementById('r-cbv').innerHTML =
+        `<div class="alert ${penal ? 'MAJEURE' : 'OK'}">✅ ITT ${r.itt_jours} j — <b>${DZ.esc(r.seuil_penal_15j)}</b></div>`;
+    } catch (e) { DZ.toast(e.message, false); }
+  };
   document.getElementById('b-bon').onclick = async () => {
-    try { const r = await DZ.rpc('dz:mutuelle.bon', [{ patient_id: +v('m-pat') || null, organisme: v('m-org'), acte: v('m-acte'), montant_dzd: +v('m-mont') }]);
-      document.getElementById('r-mut').innerHTML = `<p>✅ Bon <b>${r.id.slice(0, 8)}</b></p>`; } catch(e) { DZ.toast(e.message, false); } };
+    try {
+      const r = await DZ.rpc('dz:mutuelle.bon', [{
+        patient_id: +v('m-pat') || null, organisme: v('m-org'),
+        acte: v('m-acte'), montant_dzd: +v('m-mont')
+      }]);
+      document.getElementById('r-mut').innerHTML =
+        `<div class="alert OK">✅ Bon <b>${DZ.esc(String(r.id).slice(0, 8))}</b> émis</div>`;
+    } catch (e) { DZ.toast(e.message, false); }
+  };
   document.getElementById('b-bord').onclick = async () => {
-    try { const r = await DZ.rpc('dz:mutuelle.bordereau', [{ organisme: v('m-org'), mois: v('m-mois') || undefined }]);
-      document.getElementById('r-mut').innerHTML = `<p><b>${r.organisme} — ${r.mois}</b> : ${r.nombre} bons, total <b>${DZ.money(r.total)}</b></p>`; } catch(e) { DZ.toast(e.message, false); } };
+    try {
+      const r = await DZ.rpc('dz:mutuelle.bordereau', [{ organisme: v('m-org'), mois: v('m-mois') || undefined }]);
+      document.getElementById('r-mut').innerHTML =
+        `<div class="alert OK"><b>${DZ.esc(r.organisme)} — ${DZ.esc(r.mois)}</b> : ${r.nombre} bons, total <b>${DZ.money(r.total)}</b></div>`;
+    } catch (e) { DZ.toast(e.message, false); }
+  };
+
   document.getElementById('b-print').onclick = async () => {
     try {
       const p = await DZ.rpc('dz:print.payload', [{ kind: v('pr-kind'), id: v('pr-id') }]);
+      const hdr = p.header || {};
+      const body = p[p.kind] || p.ordonnance || p.arret || p.registre || p.certificat || p.bon || {};
       document.getElementById('print-zone').innerHTML =
-        `<div class="a5"><h3>${DZ.esc((p.header && p.header.cabinet) || 'Cabinet Médical')}</h3>
-        <p style="text-align:center;font-size:11px">${DZ.esc([(p.header && p.header.medecin), (p.header && p.header.specialite), (p.header && p.header.ordre_medecin) && ('Ordre N° ' + p.header.ordre_medecin), (p.header && p.header.agrement_dsp) && ('Agrément DSP ' + p.header.agrement_dsp)].filter(Boolean).join(' • '))}</p>
-        <hr><p><b>Patient :</b> ${DZ.esc(p.patient ? p.patient.nom + ' ' + p.patient.prenom : '—')}</p>
-        <pre style="background:#fff;color:#000;border:0">${DZ.esc(JSON.stringify(p[p.kind] || p.ordonnance || p.arret || p.registre || p.certificat || p.bon || {}, null, 2))}</pre>
-        <p style="font-size:11px">Mode ${p.mode} • A5 148×210 • décalages ΔX ${p.dx_mm} / ΔY ${p.dy_mm} mm</p></div>
-        <button class="noprint" onclick="window.print()">🖨️ Imprimer A5</button>`;
-    } catch(e) { DZ.toast(e.message, false); }
+        `<div class="a5">
+          <h3>${DZ.esc(hdr.cabinet || 'Cabinet Médical')}</h3>
+          <p style="text-align:center;font-size:11px;margin:0 0 8px">${
+            [hdr.medecin, hdr.specialite,
+             hdr.ordre_medecin ? 'Ordre N° ' + hdr.ordre_medecin : null,
+             hdr.agrement_dsp ? 'Agrément DSP ' + hdr.agrement_dsp : null
+            ].filter(Boolean).map(DZ.esc).join(' • ')
+          }</p>
+          <hr style="border:none;border-top:1px solid #000;margin:6px 0">
+          <p style="font-size:12px"><b>Patient :</b> ${
+            p.patient ? DZ.esc(p.patient.nom + ' ' + p.patient.prenom) : '—'
+          }</p>
+          <pre style="font-size:11px;white-space:pre-wrap">${DZ.esc(JSON.stringify(body, null, 2))}</pre>
+          <p style="font-size:10px;color:#555">Mode ${DZ.esc(p.mode)} • A5 148×210 • ΔX ${p.dx_mm} / ΔY ${p.dy_mm} mm</p>
+        </div>
+        <div class="btn-row noprint" style="justify-content:center">
+          <button class="btn btn-primary" onclick="window.print()">🖨️ Imprimer A5</button>
+        </div>`;
+    } catch (e) { DZ.toast(e.message, false); }
   };
-})();</script></body></html>
+})();</script>
+</body></html>

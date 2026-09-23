@@ -173,9 +173,9 @@ function startSocketServer(db, port = 3789, userDataPath = null) {
 }
 
 /* ─── Fichiers statiques ─────────────────────────────────────────── */
-// Pont officiel vers les Modules DZ : le frontend React est un bundle compilé
-// sans sources ; ce bouton discret sur la page d'accueil mène au hub /dz/.
-const DZ_LAUNCHER = `<a href="/dz/" style="position:fixed;bottom:14px;left:14px;z-index:99999;background:#0b1e3a;color:#fff;padding:9px 14px;border-radius:999px;font:600 13px system-ui,sans-serif;text-decoration:none;box-shadow:0 2px 10px rgba(0,0,0,.4);border:1px solid #38bdf8" title="Modules Algérie — caisse, posologie, file, documents">&#x1F1E9;&#x1F1FF; Modules DZ</a>`;
+// Shell DZ : injecte les Modules Algérie dans le menu latéral de l'app principale
+// (le bundle React est compilé sans sources — extension DOM non destructive).
+const DZ_SHELL = `<script src="/dz/shell.js"></script>`;
 const LIVE_SNIPPET = `
 <script src="/socket.io/socket.io.js"></script>
 <script>
@@ -226,14 +226,16 @@ function serveStatic(req, res, url) {
   const ext  = path.extname(filePath);
   const mime = MIME[ext] || 'application/octet-stream';
 
-  // Lanceur DZ sur l'accueil (prod comme preview) + LIVE reload en preview.
-  if (ext === '.html' && (process.env.SAHAMED_LIVE === '1' || path.basename(filePath) === 'index.html')) {
+  // Shell DZ (toujours) + LIVE reload en preview — sur l'app principale.
+  if (ext === '.html' && path.basename(filePath) === 'index.html') {
     let html = fs.readFileSync(filePath, 'utf8');
-    if (!html.includes('/dz/') && html.includes('</body>')) html = html.replace('</body>', `${DZ_LAUNCHER}</body>`);
-    else if (!html.includes('/dz/')) html += DZ_LAUNCHER;
-    if (process.env.SAHAMED_LIVE === '1') {
-      if (html.includes('</body>')) html = html.replace('</body>', `${LIVE_SNIPPET}</body>`);
-      else html += LIVE_SNIPPET;
+    const inject = [];
+    if (!html.includes('/dz/shell.js')) inject.push(DZ_SHELL);
+    if (process.env.SAHAMED_LIVE === '1') inject.push(LIVE_SNIPPET);
+    if (inject.length) {
+      const tag = inject.join('\n');
+      if (html.includes('</body>')) html = html.replace('</body>', `${tag}</body>`);
+      else html += tag;
     }
     const buf = Buffer.from(html, 'utf8');
     res.writeHead(200, { 'Content-Type': mime, 'Content-Length': buf.length, 'Cache-Control': 'no-store' });

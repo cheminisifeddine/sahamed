@@ -1,38 +1,104 @@
 <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licence — SahaMed DZ</title><link rel="stylesheet" href="/dz/dz.css"></head><body>
-<header class="top"><a href="/dz/">← Modules</a><h1>🔑 Licence perpétuelle hors-ligne</h1><span id="lic"></span></header>
-<main>
-  <div class="panel"><h2>1. Transmettez ce code (SMS / WhatsApp au commercial)</h2>
-    <p style="font-size:26px;letter-spacing:2px"><b id="machine">…</b></p>
-    <h2>2. Saisissez la clé d'activation reçue</h2>
-    <input id="key" placeholder="XXXX-XXXX-XXXX-XXXX-…" style="font-size:17px">
-    <button id="b-bind">✅ Activer définitivement</button><div id="out"></div>
+<title>Licence — SahaMed</title><link rel="stylesheet" href="/dz/dz.css"></head><body>
+<main class="page">
+  <div class="dz-page-head">
+    <div>
+      <div class="page-title">Licence perpétuelle hors-ligne</div>
+      <div class="page-subtitle">Activation Ed25519 · sans abonnement · sans internet · liée à ce poste</div>
+    </div>
+    <span class="badge slate" id="badge">…</span>
   </div>
-  <div class="panel"><h2>Statut</h2><div id="status">…</div>
-    <p style="font-size:13px;color:#94a3b8">Licence perpétuelle, sans abonnement, sans internet. Liée à ce poste uniquement.</p>
+
+  <div class="panel">
+    <h2>1 · Code machine</h2>
+    <p class="dz-hint">Transmettez ce code au commercial (SMS / WhatsApp) :</p>
+    <p style="font-size:26px;letter-spacing:3px;font-family:var(--font-mono);font-weight:700;color:var(--primary);margin:8px 0">
+      <b id="machine">…</b>
+    </p>
+    <button class="btn" id="b-copy" type="button">📋 Copier le code</button>
   </div>
+
+  <div class="panel">
+    <h2>2 · Clé d'activation</h2>
+    <label for="key">Clé reçue</label>
+    <input id="key" placeholder="XXXX-XXXX-XXXX-XXXX-…" style="font-size:16px;font-family:var(--font-mono)" autocomplete="off">
+    <div class="btn-row">
+      <button id="b-bind" class="btn btn-primary">✅ Activer définitivement</button>
+    </div>
+    <div id="out"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Statut</h2>
+    <div id="status"><p class="dz-hint">Vérification…</p></div>
+    <p class="dz-hint">Licence perpétuelle, sans abonnement, sans internet. Vérification locale de la signature Ed25519.</p>
+  </div>
+
+  <footer class="dz-foot">Essai 30 jours · rappel doux ensuite (jamais de blocage brutal en cours de consultation)</footer>
 </main>
 <script src="/dz/dz.js"></script>
 <script>(async function () {
+  if (window.self === window.top) DZ.mountHeader('Licence');
+
   async function pub(m, a) {
-    const r = await fetch('/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: m, args: a }) });
+    const r = await fetch('/api', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channel: m, args: a })
+    });
     const j = await r.json();
-    if (!j.ok) throw new Error(j.error);
+    if (!j.ok) throw new Error(j.error || 'Erreur');
     return j.data;
   }
+
   async function refresh() {
     try {
       const s = await pub('guard:status', []);
       document.getElementById('machine').textContent = s.machine || '—';
-      document.getElementById('status').innerHTML = s.mode === 'bound'
-        ? `<span class="badge green">✅ LICENCIÉ PERPÉTUEL</span> ${s.licensedAt ? 'depuis ' + s.licensedAt.slice(0, 10) : ''}`
-        : `<span class="badge amber">🧪 ESSAI — ${s.daysLeft} jour(s) restant(s)</span>`;
+      const badge = document.getElementById('badge');
+      const status = document.getElementById('status');
+      if (s.mode === 'bound') {
+        badge.className = 'badge green';
+        badge.textContent = 'LICENCIÉ';
+        status.innerHTML = `<div class="alert OK">✅ <b>Licence perpétuelle</b>${
+          s.licensedAt ? ' — depuis ' + DZ.esc(s.licensedAt.slice(0, 10)) : ''
+        }${s.ref ? ' · réf. <code>' + DZ.esc(s.ref) + '</code>' : ''}</div>`;
+      } else if (s.mode === 'expired') {
+        badge.className = 'badge red';
+        badge.textContent = 'EXPIRÉ';
+        status.innerHTML = '<div class="alert CRITIQUE">Période d\'évaluation expirée. Entrez la clé d\'activation.</div>';
+      } else {
+        badge.className = 'badge amber';
+        badge.textContent = 'ESSAI ' + (s.daysLeft ?? '?') + ' j';
+        status.innerHTML = `<div class="alert MAJEURE">🧪 Essai — <b>${s.daysLeft}</b> jour(s) restant(s).</div>`;
+      }
       DZ.licenseChip(document.getElementById('lic'));
-    } catch(e) { document.getElementById('status').textContent = e.message; }
+    } catch (e) {
+      document.getElementById('status').innerHTML = '<div class="alert CRITIQUE">' + DZ.esc(e.message) + '</div>';
+    }
   }
-  document.getElementById('b-bind').onclick = async () => {
-    try { await pub('guard:bind', [document.getElementById('key').value]); DZ.toast('Logiciel activé ✔'); refresh(); }
-    catch(e) { DZ.toast(e.message, false); }
+
+  document.getElementById('b-copy').onclick = async () => {
+    const t = document.getElementById('machine').textContent;
+    try {
+      await navigator.clipboard.writeText(t);
+      DZ.toast('Code copié', true);
+    } catch {
+      DZ.toast(t, true);
+    }
   };
+
+  document.getElementById('b-bind').onclick = async () => {
+    const key = document.getElementById('key').value.trim();
+    if (!key) { DZ.toast('Entrez la clé', false); return; }
+    try {
+      await pub('guard:bind', [key]);
+      DZ.toast('Logiciel activé ✔', true);
+      document.getElementById('key').value = '';
+      refresh();
+    } catch (e) { DZ.toast(e.message, false); }
+  };
+
   refresh();
-})();</script></body></html>
+})();</script>
+</body></html>
