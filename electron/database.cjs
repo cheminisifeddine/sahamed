@@ -418,6 +418,15 @@ function seed(store) {
   } else if (bcrypt.compareSync('admin123', admin.password_hash)) {
     store.run('UPDATE users SET password_hash = ? WHERE id = ?', [hashPassword('admin'), admin.id]);
   }
+  // Accueil / réception : profil Secrétaire visible sur l'écran de connexion (avec admin).
+  const secretaire = store.get('SELECT id FROM users WHERE login = ?', ['secretaire']);
+  if (!secretaire) {
+    store.run(
+      'INSERT INTO users (nom, prenom, role, login, password_hash, actif, specialite, telephone, permissions) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      ['Réception', '', 'secretaire', 'secretaire', hashPassword('secretaire'), 1, null, null,
+        JSON.stringify(['dashboard', 'patients', 'planning', 'caisse', 'chat'])]
+    );
+  }
   seedMedicaments(store);
   dz.seedDZ(store);
 }
