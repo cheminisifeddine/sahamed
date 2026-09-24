@@ -184,6 +184,11 @@ function migrate(store) {
   addColumn(store, 'patients', 'poids', 'REAL');
   addColumn(store, 'consultations', 'acte_id', 'INTEGER REFERENCES actes(id)');
   addColumn(store, 'consultations', 'montant_prevu', 'REAL');
+  // INSERT OR IGNORE sur actes/motifs était sans effet (pas d'UNIQUE) : chaque
+  // redémarrage multipliait le catalogue (12× les actes de base). On dédoublonne
+  // en conservant le plus ancien, on rattache les références, puis on pose l'index.
+  // Appel APRÈS addColumn(consultations.acte_id) pour pouvoir rattacher sur base fraîche.
+  dedupliquerCatalogueActesMotifs(store);
   migrateUsersRoleAndPerms(store);
   addColumn(store, 'users', 'permissions', 'TEXT');
   addColumn(store, 'users', 'specialite', 'TEXT');
@@ -413,7 +418,15 @@ function seed(store) {
       ['PANSC', 'Pansement complexe', 600, 'acte_technique'],
       ['CERTIF', 'Certificat médical', 500, 'document'],
       ['ARRET', 'Arrêt de travail', 300, 'document']
-    ].forEach((row) => store.db.run('INSERT OR IGNORE INTO actes (code, libelle, tarif, categorie) VALUES (?, ?, ?, ?)', row));
+    ].forEach((row) => {
+      // L'index UNIQUE sur code peut manquer sur une base fraîche avant migrate ;
+      // on vérifie aussi côté SQL pour éviter tout doublon de catalogue.
+      const exists = store.get(
+        'SELECT id FROM actes WHERE (code IS NOT NULL AND code = ?) OR (code IS NULL AND libelle = ? AND tarif = ? AND COALESCE(categorie, \'\') = ?)',
+        [row[0], row[1], row[2], row[3]]
+      );
+      if (!exists) store.db.run('INSERT INTO actes (code, libelle, tarif, categorie) VALUES (?, ?, ?, ?)', row);
+    });
 
     [
       ['Consultation générale',          '#3B82F6', 1],
@@ -425,7 +438,13 @@ function seed(store) {
       ['Renouvellement ordonnance',      '#B45309', 7],
       ['Consultation pédiatrique',       '#1D4ED8', 8],
       ['Acte technique',                 '#9D174D', 9],
-    ].forEach((row) => store.db.run('INSERT OR IGNORE INTO motifs (libelle, couleur, ordre) VALUES (?, ?, ?)', row));
+    ].forEach((row) => {
+      const exists = store.get(
+        'SELECT id FROM motifs WHERE libelle = ? AND couleur = ? AND ordre = ?',
+        row
+      );
+      if (!exists) store.db.run('INSERT INTO motifs (libelle, couleur, ordre) VALUES (?, ?, ?)', row);
+    });
 
     store.db.run('COMMIT');
   } catch (e) {
@@ -456,6 +475,47 @@ function addColumn(store, table, column, definition) {
   const columns = store.all(`PRAGMA table_info(${table})`).map((item) => item.name);
   if (!columns.includes(column)) {
     store.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
+// Supprime les doublons de catalogue (actes / motifs) accumulés quand
+// INSERT OR IGNORE s'exécutait sans contrainte UNIQUE. Conserve le plus
+// ancien, rattache consultations et paiements, puis pose les index uniques.
+function dedupliquerCatalogueActesMotifs(store) {
+  try {
+    const cleActe = (r) => `${r.code || ''}|${r.libelle}|${r.tarif}|${r.categorie || ''}`;
+    const actes = store.all('SELECT id, code, libelle, tarif, categorie FROM actes ORDER BY id');
+    const gardes = new Map();
+    const supprimes = [];
+    for (const a of actes) {
+      const k = cleActe(a);
+      if (gardes.has(k)) {
+        const keep = gardes.get(k);
+        store.db.run('UPDATE consultations SET acte_id = ? WHERE acte_id = ?', [keep, a.id]);
+        store.db.run('UPDATE paiements SET acte_id = ? WHERE acte_id = ?', [keep, a.id]);
+        supprimes.push(a.id);
+      } else {
+        gardes.set(k, a.id);
+      }
+    }
+    for (const id of supprimes) store.db.run('DELETE FROM actes WHERE id = ?', [id]);
+
+    const motifs = store.all('SELECT id, libelle, couleur, ordre FROM motifs ORDER BY id');
+    const gardesM = new Set();
+    for (const m of motifs) {
+      const k = `${m.libelle}|${m.couleur}|${m.ordre}`;
+      if (gardesM.has(k)) store.db.run('DELETE FROM motifs WHERE id = ?', [m.id]);
+      else gardesM.add(k);
+    }
+
+    store.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_actes_code ON actes(code) WHERE code IS NOT NULL AND code != ''");
+    store.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_motifs_uniq ON motifs(libelle, couleur, ordre)');
+    if (supprimes.length) {
+      store.save();
+      console.log(`[Clinixos] Catalogue nettoyé : ${supprimes.length} acte(s) en double supprimé(s).`);
+    }
+  } catch (e) {
+    console.warn('[Clinixos] Dédoublonnage catalogue ignoré :', e.message);
   }
 }
 
@@ -916,15 +976,54 @@ function attachQueries(store) {
   };
   s.listMotifs = () => store.all('SELECT * FROM motifs WHERE actif = 1 ORDER BY ordre, libelle');
   s.listAllMotifs = () => store.all('SELECT * FROM motifs ORDER BY ordre, libelle');
-  s.saveMotif = (data) => data.id
-    ? (store.run('UPDATE motifs SET libelle=?, couleur=?, ordre=?, actif=? WHERE id=?', [required(data.libelle, 'Libelle'), data.couleur || '#3B82F6', Number(data.ordre || 0), data.actif !== undefined ? (data.actif ? 1 : 0) : 1, data.id]), { id: data.id })
-    : { id: store.run('INSERT INTO motifs (libelle, couleur, ordre, actif) VALUES (?, ?, ?, ?)', [required(data.libelle, 'Libelle'), data.couleur || '#3B82F6', Number(data.ordre || 0), 1]).lastInsertRowid };
+  s.saveMotif = (data) => {
+    if (data.id) {
+      store.run('UPDATE motifs SET libelle=?, couleur=?, ordre=?, actif=? WHERE id=?',
+        [required(data.libelle, 'Libelle'), data.couleur || '#3B82F6', Number(data.ordre || 0), data.actif !== undefined ? (data.actif ? 1 : 0) : 1, data.id]);
+      return { id: data.id };
+    }
+    const libelle = required(data.libelle, 'Libelle');
+    const couleur = data.couleur || '#3B82F6';
+    const ordre = Number(data.ordre || 0);
+    // UNIQUE(libelle,couleur,ordre) + suppression logique : réactiver si la ligne existe déjà
+    const exist = store.get('SELECT id FROM motifs WHERE libelle=? AND couleur=? AND ordre=?', [libelle, couleur, ordre]);
+    if (exist) {
+      store.run('UPDATE motifs SET actif=1 WHERE id=?', [exist.id]);
+      return { id: exist.id };
+    }
+    return { id: store.run('INSERT INTO motifs (libelle, couleur, ordre, actif) VALUES (?, ?, ?, 1)', [libelle, couleur, ordre]).lastInsertRowid };
+  };
   s.deleteMotif = (id) => store.run('UPDATE motifs SET actif = 0 WHERE id = ?', [id]);
 
   s.listActes = () => store.all('SELECT * FROM actes ORDER BY actif DESC, libelle');
-  s.saveActe = (data) => data.id
-    ? (store.run('UPDATE actes SET code=?, libelle=?, tarif=?, categorie=?, actif=? WHERE id=?', [nullable(data.code), required(data.libelle, 'Libelle'), Number(data.tarif || 0), data.categorie || 'consultation', data.actif ? 1 : 0, data.id]), { id: data.id })
-    : { id: store.run('INSERT INTO actes (code, libelle, tarif, categorie, actif) VALUES (?, ?, ?, ?, ?)', [nullable(data.code), required(data.libelle, 'Libelle'), Number(data.tarif || 0), data.categorie || 'consultation', data.actif ? 1 : 0]).lastInsertRowid };
+  s.saveActe = (data) => {
+    if (data.id) {
+      store.run('UPDATE actes SET code=?, libelle=?, tarif=?, categorie=?, actif=? WHERE id=?',
+        [nullable(data.code), required(data.libelle, 'Libelle'), Number(data.tarif || 0), data.categorie || 'consultation', data.actif ? 1 : 0, data.id]);
+      return { id: data.id };
+    }
+    const code = nullable(data.code);
+    const libelle = required(data.libelle, 'Libelle');
+    const tarif = Number(data.tarif || 0);
+    const categorie = data.categorie || 'consultation';
+    const actif = data.actif ? 1 : 0;
+    // UNIQUE(code) : mettre à jour l'existant au lieu d'échouer (rejeu de seed / réactivation)
+    if (code) {
+      const exist = store.get('SELECT id FROM actes WHERE code=?', [code]);
+      if (exist) {
+        store.run('UPDATE actes SET libelle=?, tarif=?, categorie=?, actif=? WHERE id=?', [libelle, tarif, categorie, actif, exist.id]);
+        return { id: exist.id };
+      }
+    } else {
+      const exist = store.get('SELECT id FROM actes WHERE code IS NULL AND libelle=? AND tarif=? AND COALESCE(categorie,\'\')=?', [libelle, tarif, categorie]);
+      if (exist) {
+        store.run('UPDATE actes SET actif=? WHERE id=?', [actif, exist.id]);
+        return { id: exist.id };
+      }
+    }
+    return { id: store.run('INSERT INTO actes (code, libelle, tarif, categorie, actif) VALUES (?, ?, ?, ?, ?)', [code, libelle, tarif, categorie, actif]).lastInsertRowid };
+  };
+  s.deleteActe = (id) => store.run('UPDATE actes SET actif = 0 WHERE id = ?', [id]).changes > 0;
 
   // ── Statistiques du cabinet ────────────────────────────────────────
   // Un seul appel renvoie tout ce qu'affiche l'ecran Statistiques. Les dates

@@ -606,9 +606,10 @@ function attachDZ(store) {
     return { id, itt_jours: itt, seuil_penal_15j: itt > 15 ? 'DÉPASSÉ — délit correctionnel (art. 264-266 Code pénal)' : 'Non atteint — contravention' };
   };
   s.dzMutuelleBon = ({ patient_id, organisme, numero_affiliation, acte, montant_dzd, created_by }) => {
+    if (!organisme || !acte) throw new Error('Organisme et acte obligatoires');
     const id = uuid();
     store.run('INSERT INTO mutuelles_bons (id,patient_id,organisme,numero_affiliation,acte,montant_dzd,created_by) VALUES (?,?,?,?,?,?,?)',
-      [id, patient_id || null, organisme, numero_affiliation || null, acte, Number(montant_dzd || 0), created_by || null]);
+      [id, patient_id || null, String(organisme), numero_affiliation || null, String(acte), Number(montant_dzd || 0), created_by || null]);
     return { id };
   };
   s.dzMutuelleBordereau = ({ organisme, mois }) => {

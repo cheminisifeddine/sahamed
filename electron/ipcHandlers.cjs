@@ -345,6 +345,10 @@ function registerIpcHandlers(db, socketServer) {
     requireMedecin();
     return db.services.saveActe({ ...data, id });
   }));
+  ipcMain.handle('actes:delete', (_event, id) => ok(() => {
+    requireMedecin();
+    return db.services.deleteActe(id);
+  }));
 
   ipcMain.handle('chat:list', () => ok(() => {
     requireAuth();

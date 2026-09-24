@@ -431,6 +431,7 @@ async function handleApi(req, res, db, sessions, getIo) {
       case 'actes:save':   { mustBeMedecin(); data = db.services.saveActe(a0); break; }
       case 'actes:create': { mustBeMedecin(); data = db.services.saveActe(a0); break; }
       case 'actes:update': { mustBeMedecin(); data = db.services.saveActe({ ...a1, id: a0 }); break; }
+      case 'actes:delete': { mustBeMedecin(); data = db.services.deleteActe(a0); break; }
       // (system:* et guard:* sont traités plus haut, en canaux publics)
 
       // ── Module Algérie (dz:*) : caisse aveugle, ANPP, file, médico-légal… ──

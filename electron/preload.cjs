@@ -80,6 +80,7 @@ contextBridge.exposeInMainWorld('api', {
   saveActe: (data) => invoke('actes:save', data),
   createActe: (data) => invoke('actes:create', data),
   updateActe: (id, data) => invoke('actes:update', id, data),
+  deleteActe: (id) => invoke('actes:delete', id),
 
   getMessages: () => invoke('chat:list'),
   sendMessage: (message) => invoke('chat:send', message),
